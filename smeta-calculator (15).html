@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Предварительный расчёт по дизайн-проекту</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+  :root{
+    --bg:#faf8f3; --panel:#fff; --border:#e4ddd0; --accent:#2c6e8f;
+    --accent-dark:#1f5470; --text:#2b2b2b; --muted:#7a746a; --danger:#c0392b;
+    --danger-bg:#fbeceb; --highlight:#fff7e0;
+  }
+  *{box-sizing:border-box;}
+  body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:var(--bg);color:var(--text);margin:0;padding:24px;}
+  h1{font-size:24px;margin:0 0 4px;}
+  .subtitle{color:var(--muted);margin:0 0 20px;font-size:14px;}
+  .layout{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;}
+  @media(max-width:900px){.layout{grid-template-columns:1fr;}}
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:18px;}
+  .panel h2{margin:0 0 12px;font-size:16px;}
+  .dropzone{border:2px dashed var(--border);border-radius:8px;padding:28px 12px;text-align:center;cursor:pointer;color:var(--muted);}
+  .dropzone.drag{background:var(--highlight);border-color:var(--accent);}
+  .dropzone strong{display:block;color:var(--text);font-size:15px;margin-bottom:4px;}
+  .thumbs{display:flex;gap:8px;margin:12px 0;flex-wrap:wrap;}
+  .thumb{width:70px;height:90px;border:2px solid var(--border);border-radius:4px;overflow:hidden;cursor:pointer;background:#f2f0ea;}
+  .thumb img{width:100%;height:100%;object-fit:cover;}
+  .thumb.active{border-color:var(--accent);}
+  .preview{border:1px solid var(--border);border-radius:6px;overflow:auto;max-height:520px;text-align:center;background:#f2f0ea;}
+  .preview img{max-width:100%;display:block;margin:0 auto;}
+  .ai-row{display:flex;align-items:center;gap:14px;margin-top:14px;flex-wrap:wrap;}
+  button{font-family:inherit;cursor:pointer;}
+  .btn-primary{background:var(--accent);color:#fff;border:none;border-radius:6px;padding:10px 16px;font-size:14px;}
+  .btn-primary:hover{background:var(--accent-dark);}
+  .btn-primary:disabled{background:#a9c2cc;cursor:default;}
+  .link-btn{background:none;border:none;color:var(--muted);text-decoration:underline;font-size:13px;padding:0;}
+  .ai-error{margin-top:14px;background:var(--danger-bg);color:var(--danger);border:1px solid #eecdc9;border-radius:8px;padding:14px;font-size:13px;line-height:1.5;word-break:break-word;}
+  .ai-result{margin-top:14px;background:#eef6f0;border:1px solid #cfe6d5;border-radius:8px;padding:14px;font-size:13px;line-height:1.6;}
+  .ai-result h3{margin:0 0 8px;font-size:14px;}
+  .ai-result .row{margin-bottom:4px;}
+  .ai-result .src{color:var(--muted);font-size:12px;}
+  .ai-result .note{color:#a06a1a;background:#fdf3de;border-radius:4px;padding:6px 8px;margin-top:4px;}
+  .ai-result table{width:100%;border-collapse:collapse;margin-top:6px;}
+  .ai-result td,.ai-result th{border-bottom:1px solid #d6e8da;padding:4px 6px;text-align:left;font-size:12px;}
+  .top-row{display:flex;gap:10px;margin-bottom:16px;}
+  .top-row input{flex:1;border:1px solid var(--border);border-radius:6px;padding:9px 12px;font-size:14px;}
+  .ref-list{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+  .ref-item{display:flex;align-items:center;gap:8px;background:var(--bg);border:1px solid var(--border);border-radius:20px;padding:8px 14px;font-size:13px;}
+  .ref-item button{background:none;border:none;color:var(--muted);font-size:13px;padding:0 2px;}
+  .ref-item button:hover{color:var(--text);}
+  .ref-item .rm:hover{color:var(--danger);}
+  .new-pos{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+  .new-pos input[type=text]{flex:2;min-width:160px;border:1px solid var(--border);border-radius:6px;padding:9px 12px;font-size:14px;}
+  .new-pos select,.new-pos input[type=number]{border:1px solid var(--border);border-radius:6px;padding:9px 10px;font-size:14px;}
+  .new-pos input[type=number]{width:100px;}
+  table.smeta{width:100%;border-collapse:collapse;margin-top:4px;}
+  table.smeta th{text-align:left;font-size:13px;color:var(--muted);font-weight:600;padding:8px 6px;border-bottom:1px solid var(--border);}
+  table.smeta td{padding:8px 6px;border-bottom:1px solid var(--border);font-size:14px;vertical-align:middle;}
+  table.smeta input.qty{width:80px;border:1px solid var(--border);border-radius:4px;padding:6px 8px;font-size:14px;}
+  table.smeta input.qty.empty{border-color:var(--danger);background:var(--danger-bg);}
+  table.smeta input.qty.ai-guessed{border-color:#2c8a4e;background:#eef6f0;}
+  table.smeta input.qty.ai-estimated{border-color:#c07a1a;background:#fdf3e3;}
+  .estimate-box{margin-top:14px;background:#fdf3e3;border:1px solid #ecd3a0;border-radius:8px;padding:14px;font-size:13px;line-height:1.6;}
+  .estimate-box h3{margin:0 0 8px;font-size:14px;color:#8a5a10;}
+  table.smeta input.price{width:90px;border:1px solid var(--border);border-radius:4px;padding:6px 8px;font-size:14px;}
+  table.smeta .rm{background:none;border:none;color:var(--muted);font-size:16px;}
+  table.smeta .rm:hover{color:var(--danger);}
+  .empty-hint{color:var(--muted);font-size:14px;padding:14px 0;}
+  .totals{display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:14px;border-top:1px solid var(--border);}
+  .totals .left{font-size:14px;color:var(--muted);}
+  .totals .left .warn{color:var(--danger);font-weight:600;}
+  .totals .sum{font-size:26px;font-weight:700;}
+  .actions{display:flex;gap:10px;margin-top:16px;flex-wrap:wrap;}
+  .btn-secondary{background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:10px 16px;font-size:14px;}
+  .btn-secondary:hover{background:#f0ece1;}
+  .toast{position:fixed;bottom:20px;right:20px;background:#2b2b2b;color:#fff;padding:10px 16px;border-radius:6px;font-size:13px;opacity:0;transition:opacity .2s;pointer-events:none;}
+  .toast.show{opacity:1;}
+  @media print{
+    body *{visibility:hidden;}
+    .print-area,.print-area *{visibility:visible;}
+    .print-area{position:absolute;left:0;top:0;width:100%;}
+    .actions,.new-pos,.ref-list,.top-row button,input.qty,input.price,.rm{display:none !important;}
+  }
+</style>
+</head>
+<body>
+
+<h1>Предварительный расчёт по дизайн-проекту</h1>
+<p class="subtitle">Чертёж слева, смета справа — считает суммы сам, ты вводишь только цифры с чертежа (или подтверждаешь то, что нашёл ИИ)</p>
+
+<div class="layout">
+
+  <!-- ЛЕВАЯ ПАНЕЛЬ: ЧЕРТЁЖ -->
+  <div class="panel">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;">
+      <h2>Дизайн-проект</h2>
+      <span id="fileNameLabel" style="color:var(--muted);font-size:12px;"></span>
+    </div>
+
+    <div class="dropzone" id="dropzone">
+      <strong>Загрузить чертёж</strong>
+      PDF или изображение (план потолка / помещений)
+      <input type="file" id="fileInput" accept="application/pdf,image/*" multiple style="display:none;">
+    </div>
+
+    <div class="thumbs" id="thumbs"></div>
+    <div class="preview" id="preview"></div>
+
+    <div class="ai-row">
+      <button class="btn-primary" id="recognizeBtn" disabled>Считать данные с чертежа (ИИ)</button>
+      <button class="link-btn" id="serverBtn">⚙ сервер распознавания</button>
+    </div>
+    <label style="display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px;color:var(--muted);cursor:pointer;">
+      <input type="checkbox" id="geometryModeCheckbox">
+      🧪 Экспериментально: посчитать периметр/углы/светильники по геометрии и значкам (не проверено — риск ошибки в деньгах, всегда сверяй перед отправкой клиенту)
+    </label>
+
+    <div id="aiOutput"></div>
+  </div>
+
+  <!-- ПРАВАЯ ПАНЕЛЬ: СМЕТА -->
+  <div class="panel print-area">
+    <h2>Смета</h2>
+
+    <div class="top-row">
+      <input type="text" id="clientName" placeholder="Имя клиента (для сохранения расчёта)">
+      <button class="btn-primary" id="saveCalcBtn">Сохранить расчёт</button>
+      <button class="btn-secondary" id="kpFolderBtn">📁 Мои КП</button>
+    </div>
+    <div id="kpFolderPanel" style="display:none;border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:16px;background:var(--bg);max-height:280px;overflow-y:auto;"></div>
+
+    <div class="ref-list" id="refList"></div>
+
+    <div class="new-pos">
+      <input type="text" id="newPosName" placeholder='Новая позиция, напр. «Профиль Сигма»'>
+      <select id="newPosUnit">
+        <option value="м²">м²</option>
+        <option value="м">м</option>
+        <option value="шт">шт</option>
+      </select>
+      <input type="number" id="newPosPrice" placeholder="цена">
+      <button class="btn-secondary" id="addRefBtn">+ в справочник</button>
+    </div>
+
+    <table class="smeta">
+      <thead>
+        <tr><th>Наименование</th><th>Ед.</th><th>Кол-во</th><th>Цена, ₽</th><th>Сумма, ₽</th><th></th></tr>
+      </thead>
+      <tbody id="smetaBody"></tbody>
+    </table>
+    <div class="empty-hint" id="emptyHint">Нажми позицию в справочнике выше, чтобы добавить строку</div>
+
+    <div class="totals">
+      <div class="left">
+        Итого позиций: <span id="rowCount">0</span>
+        <span class="warn" id="unfilledWarn"></span>
+      </div>
+      <div class="sum" id="totalSum">0 ₽</div>
+    </div>
+
+    <div class="actions">
+      <button class="btn-secondary" id="addEmptyRowBtn">+ Пустая строка</button>
+      <button class="btn-secondary" id="copyBtn">Скопировать смету</button>
+      <button class="btn-secondary" id="pdfBtn">Скачать PDF</button>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ---------- Справочник по умолчанию (под реальные формулировки Романа) ----------
+const DEFAULT_REF = [
+  {name:"Полотно Бауф", unit:"м²", price:800},
+  {name:"Полотно МСД", unit:"м²", price:500},
+  {name:"Монтаж теневого профиля Еврокраб, натяжка полотна в теневой профиль", unit:"м", price:1600},
+  {name:"Монтаж стандартного профиля со вставкой, натяжка полотна в стандартный профиль", unit:"м", price:700},
+  {name:"Монтаж парящего профиля со вставкой, натяжка полотна в парящий профиль", unit:"м", price:2500},
+  {name:"Монтаж профиля Сигма для ниши под электрокарниз", unit:"м", price:4000},
+  {name:"Запил, стык, обработка углов профиля", unit:"шт", price:1000},
+  {name:"Монтаж доп. углов", unit:"шт", price:200},
+  {name:"Монтаж встроенной трековой системы", unit:"м", price:3000},
+  {name:"Монтаж световых линий", unit:"м", price:3000},
+  {name:"Монтаж углов световых линий", unit:"шт", price:2000},
+  {name:"Монтаж закладной с установкой встраиваемого светильника", unit:"шт", price:700},
+  {name:"Монтаж закладной с установкой люстры / подвесного светильника", unit:"шт", price:2000},
+  {name:"Монтаж встроенного карниза", unit:"м", price:4000},
+  {name:"Монтаж электрокарниза", unit:"м", price:0},
+  {name:"Монтаж карниза для шторки в ванную", unit:"м", price:4000},
+  {name:"Монтаж по керамограниту", unit:"м", price:800},
+  {name:"Монтаж теневого диффузора с канальным вентилятором", unit:"шт", price:5000},
+  {name:"Монтаж обвода трубы", unit:"шт", price:1000},
+  {name:"Монтаж бруса под шкаф", unit:"м", price:1000},
+  {name:"Монтаж закладной с установкой вентилятора", unit:"шт", price:2000},
+  {name:"Запил радиуса для карниза шторки", unit:"шт", price:5000},
+];
+
+const LS_REF = "smeta_reference_v1";
+const LS_PROJECTS = "smeta_saved_projects_v1";
+const LS_SERVER = "smeta_server_url";
+const DEFAULT_SERVER_URL = "https://smeta-ai-reader.islam-pragma.workers.dev";
+
+let reference = JSON.parse(localStorage.getItem(LS_REF) || "null") || DEFAULT_REF.slice();
+let rows = []; // {name, unit, qty, price}
+let pages = []; // {dataUrl, mediaType, base64}
+let activePage = 0;
+
+// ---------- Справочник ----------
+function saveReference(){ localStorage.setItem(LS_REF, JSON.stringify(reference)); }
+
+function renderReference(){
+  const el = document.getElementById("refList");
+  el.innerHTML = "";
+  reference.forEach((item, idx) => {
+    const div = document.createElement("div");
+    div.className = "ref-item";
+    const span = document.createElement("span");
+    span.textContent = "+ " + item.name;
+    span.style.cursor = "pointer";
+    span.onclick = () => addRow(item);
+    div.appendChild(span);
+
+    const editBtn = document.createElement("button");
+    editBtn.textContent = "✎";
+    editBtn.title = "Редактировать";
+    editBtn.onclick = (e) => {
+      e.stopPropagation();
+      const newName = prompt("Название позиции:", item.name);
+      if (newName === null) return;
+      const newUnit = prompt("Единица (м², м, шт):", item.unit) || item.unit;
+      const newPrice = prompt("Цена, ₽:", item.price);
+      item.name = newName.trim() || item.name;
+      item.unit = newUnit.trim() || item.unit;
+      item.price = parseFloat(newPrice) || item.price || 0;
+      saveReference();
+      renderReference();
+    };
+    div.appendChild(editBtn);
+
+    const rmBtn = document.createElement("button");
+    rmBtn.className = "rm";
+    rmBtn.textContent = "×";
+    rmBtn.title = "Удалить из справочника";
+    rmBtn.onclick = (e) => {
+      e.stopPropagation();
+      if (confirm("Удалить «" + item.name + "» из справочника?")) {
+        reference.splice(idx, 1);
+        saveReference();
+        renderReference();
+      }
+    };
+    div.appendChild(rmBtn);
+
+    el.appendChild(div);
+  });
+}
+
+document.getElementById("addRefBtn").onclick = () => {
+  const name = document.getElementById("newPosName").value.trim();
+  const unit = document.getElementById("newPosUnit").value;
+  const price = parseFloat(document.getElementById("newPosPrice").value) || 0;
+  if (!name) { toast("Впиши название позиции"); return; }
+  reference.push({name, unit, price});
+  saveReference();
+  renderReference();
+  document.getElementById("newPosName").value = "";
+  document.getElementById("newPosPrice").value = "";
+};
+
+// ---------- Смета ----------
+let aiDraft = null; // безопасные числа с чертежа, заполняются после распознавания
+let aiEstimates = null; // непроверенные геометрические оценки (экспериментальный режим)
+
+function guessQty(item){
+  if (!aiDraft) return { qty: null, estimated: false };
+  const name = item.name;
+  if (name.includes("Полотно")) return { qty: aiDraft.area_sqm ?? null, estimated: false };
+  if (name === "Монтаж теневого профиля Еврокраб, натяжка полотна в теневой профиль") {
+    if (aiDraft.shadowProfileLen != null) return { qty: aiDraft.shadowProfileLen, estimated: false };
+    if (aiEstimates?.perimeter_estimate_m != null) return { qty: aiEstimates.perimeter_estimate_m, estimated: true };
+    return { qty: null, estimated: false };
+  }
+  if (name === "Монтаж стандартного профиля со вставкой, натяжка полотна в стандартный профиль") {
+    return { qty: aiDraft.standardProfileLen ?? null, estimated: false };
+  }
+  if (name === "Монтаж электрокарниза") return { qty: aiDraft.electroCorniceLen ?? null, estimated: false };
+  if (name === "Запил, стык, обработка углов профиля" && aiEstimates?.corner_count_estimate != null) {
+    return { qty: aiEstimates.corner_count_estimate, estimated: true };
+  }
+  if (name === "Монтаж световых линий" && aiEstimates?.linear_light_length_estimate_m != null) {
+    return { qty: aiEstimates.linear_light_length_estimate_m, estimated: true };
+  }
+  if (name === "Монтаж углов световых линий" && aiEstimates?.linear_light_corners_estimate != null) {
+    return { qty: aiEstimates.linear_light_corners_estimate, estimated: true };
+  }
+  if (name === "Монтаж закладной с установкой встраиваемого светильника" && aiEstimates?.builtin_fixture_count_estimate != null) {
+    return { qty: aiEstimates.builtin_fixture_count_estimate, estimated: true };
+  }
+  if (name === "Монтаж закладной с установкой люстры / подвесного светильника" && aiEstimates?.pendant_fixture_count_estimate != null) {
+    return { qty: aiEstimates.pendant_fixture_count_estimate, estimated: true };
+  }
+  return { qty: null, estimated: false };
+}
+
+function addRow(item){
+  const { qty, estimated } = guessQty(item);
+  rows.push({name:item.name, unit:item.unit, qty, price:item.price || 0, aiGuessed: qty !== null && !estimated, aiEstimated: estimated && qty !== null});
+  renderSmeta();
+}
+document.getElementById("addEmptyRowBtn").onclick = () => {
+  rows.push({name:"", unit:"м²", qty:null, price:0});
+  renderSmeta();
+};
+
+function renderSmeta(){
+  const body = document.getElementById("smetaBody");
+  body.innerHTML = "";
+  document.getElementById("emptyHint").style.display = rows.length ? "none" : "block";
+
+  let total = 0, unfilled = 0;
+
+  rows.forEach((row, idx) => {
+    const tr = document.createElement("tr");
+
+    const tdName = document.createElement("td");
+    if (row.name) {
+      tdName.textContent = row.name;
+    } else {
+      const inp = document.createElement("input");
+      inp.type = "text";
+      inp.placeholder = "название";
+      inp.style.width = "100%";
+      inp.value = row.name;
+      inp.oninput = () => { row.name = inp.value; };
+      tdName.appendChild(inp);
+    }
+    tr.appendChild(tdName);
+
+    const tdUnit = document.createElement("td");
+    tdUnit.textContent = row.unit;
+    tr.appendChild(tdUnit);
+
+    const tdQty = document.createElement("td");
+    const qtyInput = document.createElement("input");
+    qtyInput.type = "number";
+    qtyInput.className = "qty" + (row.qty === null || row.qty === "" ? " empty" : "") + (row.aiGuessed ? " ai-guessed" : "") + (row.aiEstimated ? " ai-estimated" : "");
+    qtyInput.title = row.aiGuessed ? "Подставлено ИИ с чертежа — проверь перед отправкой клиенту" : (row.aiEstimated ? "Непроверенная оценка по геометрии/значкам — обязательно сверь вручную!" : "");
+    qtyInput.value = row.qty === null ? "" : row.qty;
+    qtyInput.step = "any";
+    qtyInput.oninput = () => {
+      row.qty = qtyInput.value === "" ? null : parseFloat(qtyInput.value);
+      row.aiGuessed = false;
+      row.aiEstimated = false;
+      qtyInput.className = "qty" + (row.qty === null || isNaN(row.qty) ? " empty" : "");
+      renderSmeta();
+    };
+    tdQty.appendChild(qtyInput);
+    if (row.aiGuessed) {
+      const tag = document.createElement("span");
+      tag.textContent = " ИИ";
+      tag.title = "Подставлено с чертежа — проверь";
+      tag.style.cssText = "color:#2c8a4e;font-size:11px;margin-left:4px;";
+      tdQty.appendChild(tag);
+    }
+    if (row.aiEstimated) {
+      const tag = document.createElement("span");
+      tag.textContent = " ⚠ оценка";
+      tag.title = "Непроверенная оценка по геометрии/значкам — обязательно сверь вручную!";
+      tag.style.cssText = "color:#c07a1a;font-size:11px;margin-left:4px;";
+      tdQty.appendChild(tag);
+    }
+    tr.appendChild(tdQty);
+
+    const tdPrice = document.createElement("td");
+    const priceInput = document.createElement("input");
+    priceInput.type = "number";
+    priceInput.className = "price";
+    priceInput.value = row.price || 0;
+    priceInput.oninput = () => { row.price = parseFloat(priceInput.value) || 0; renderSmeta(); };
+    tdPrice.appendChild(priceInput);
+    tr.appendChild(tdPrice);
+
+    const sum = (row.qty && !isNaN(row.qty)) ? row.qty * row.price : 0;
+    const tdSum = document.createElement("td");
+    tdSum.textContent = sum ? sum.toLocaleString("ru-RU") : "—";
+    tr.appendChild(tdSum);
+
+    const tdRm = document.createElement("td");
+    const rmBtn = document.createElement("button");
+    rmBtn.className = "rm";
+    rmBtn.textContent = "✕";
+    rmBtn.onclick = () => { rows.splice(idx, 1); renderSmeta(); };
+    tdRm.appendChild(rmBtn);
+    tr.appendChild(tdRm);
+
+    body.appendChild(tr);
+
+    total += sum;
+    if (row.qty === null || row.qty === "" || isNaN(row.qty)) unfilled++;
+  });
+
+  document.getElementById("rowCount").textContent = rows.length;
+  document.getElementById("totalSum").textContent = total.toLocaleString("ru-RU") + " ₽";
+  document.getElementById("unfilledWarn").textContent = unfilled ? ` · не заполнено кол-во: ${unfilled}` : "";
+}
+
+// ---------- Сохранение расчёта по клиенту ----------
+document.getElementById("saveCalcBtn").onclick = () => {
+  const name = document.getElementById("clientName").value.trim();
+  if (!name) { toast("Впиши имя клиента"); return; }
+  const all = JSON.parse(localStorage.getItem(LS_PROJECTS) || "{}");
+  all[name] = { rows, savedAt: new Date().toISOString() };
+  localStorage.setItem(LS_PROJECTS, JSON.stringify(all));
+  toast("Расчёт сохранён для «" + name + "»");
+  if (document.getElementById("kpFolderPanel").style.display !== "none") renderKpFolder();
+};
+
+// ---------- Папка сохранённых КП ----------
+document.getElementById("kpFolderBtn").onclick = () => {
+  const panel = document.getElementById("kpFolderPanel");
+  const opening = panel.style.display === "none";
+  panel.style.display = opening ? "block" : "none";
+  if (opening) renderKpFolder();
+};
+
+function renderKpFolder(){
+  const panel = document.getElementById("kpFolderPanel");
+  const all = JSON.parse(localStorage.getItem(LS_PROJECTS) || "{}");
+  const names = Object.keys(all).sort((a, b) => new Date(all[b].savedAt) - new Date(all[a].savedAt));
+
+  if (!names.length) {
+    panel.innerHTML = `<div style="color:var(--muted);font-size:13px;">Пока нет сохранённых расчётов. Впиши имя клиента и нажми «Сохранить расчёт».</div>`;
+    return;
+  }
+
+  panel.innerHTML = "";
+  names.forEach(name => {
+    const entry = all[name];
+    const total = (entry.rows || []).reduce((s, r) => s + ((r.qty && !isNaN(r.qty)) ? r.qty * r.price : 0), 0);
+    const date = entry.savedAt ? new Date(entry.savedAt).toLocaleString("ru-RU", {day:"2-digit", month:"2-digit", year:"numeric", hour:"2-digit", minute:"2-digit"}) : "";
+
+    const row = document.createElement("div");
+    row.style.cssText = "display:flex;justify-content:space-between;align-items:center;padding:8px 4px;border-bottom:1px solid var(--border);gap:8px;";
+
+    const info = document.createElement("div");
+    info.innerHTML = `<strong>${escapeHtml(name)}</strong><br><span style="color:var(--muted);font-size:12px;">${date} · ${(entry.rows||[]).length} позиций · ${total.toLocaleString("ru-RU")} ₽</span>`;
+    row.appendChild(info);
+
+    const btns = document.createElement("div");
+    btns.style.cssText = "display:flex;gap:6px;flex-shrink:0;";
+
+    const openBtn = document.createElement("button");
+    openBtn.className = "btn-secondary";
+    openBtn.textContent = "Открыть";
+    openBtn.onclick = () => {
+      rows = JSON.parse(JSON.stringify(entry.rows || []));
+      document.getElementById("clientName").value = name;
+      renderSmeta();
+      document.getElementById("kpFolderPanel").style.display = "none";
+      toast("Открыт расчёт «" + name + "»");
+    };
+    btns.appendChild(openBtn);
+
+    const delBtn = document.createElement("button");
+    delBtn.className = "btn-secondary";
+    delBtn.textContent = "✕";
+    delBtn.title = "Удалить";
+    delBtn.onclick = () => {
+      if (!confirm("Удалить сохранённый расчёт «" + name + "»?")) return;
+      delete all[name];
+      localStorage.setItem(LS_PROJECTS, JSON.stringify(all));
+      renderKpFolder();
+    };
+    btns.appendChild(delBtn);
+
+    row.appendChild(btns);
+    panel.appendChild(row);
+  });
+}
+
+// ---------- Копировать / PDF ----------
+document.getElementById("copyBtn").onclick = () => {
+  let text = "Наименование\tЕд.\tКол-во\tЦена\tСумма\n";
+  let total = 0;
+  rows.forEach(r => {
+    const sum = (r.qty && !isNaN(r.qty)) ? r.qty * r.price : 0;
+    total += sum;
+    text += `${r.name}\t${r.unit}\t${r.qty ?? ""}\t${r.price}\t${sum}\n`;
+  });
+  text += `\nИТОГО\t\t\t\t${total}`;
+  navigator.clipboard.writeText(text).then(() => toast("Смета скопирована"));
+};
+document.getElementById("pdfBtn").onclick = () => window.print();
+
+// ---------- Загрузка чертежа ----------
+const fileInput = document.getElementById("fileInput");
+const dropzone = document.getElementById("dropzone");
+dropzone.onclick = () => fileInput.click();
+["dragenter","dragover"].forEach(ev => dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.add("drag"); }));
+["dragleave","drop"].forEach(ev => dropzone.addEventListener(ev, e => { e.preventDefault(); dropzone.classList.remove("drag"); }));
+dropzone.addEventListener("drop", e => { handleFiles(e.dataTransfer.files); });
+fileInput.addEventListener("change", e => handleFiles(e.target.files));
+
+async function handleFiles(fileList){
+  const files = Array.from(fileList);
+  if (!files.length) return;
+  pages = [];
+  document.getElementById("fileNameLabel").textContent = files.map(f=>f.name).join(", ");
+
+  for (const file of files){
+    if (file.type === "application/pdf"){
+      await addPdfPages(file);
+    } else if (file.type.startsWith("image/")){
+      await addImagePage(file);
+    }
+  }
+  renderThumbs();
+  if (pages.length){ activePage = 0; renderPreview(); }
+  document.getElementById("recognizeBtn").disabled = pages.length === 0;
+  document.getElementById("aiOutput").innerHTML = "";
+  aiDraft = null;
+  aiEstimates = null;
+}
+
+function addImagePage(file){
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      pages.push({dataUrl: reader.result, mediaType: file.type, base64: reader.result.split(",")[1]});
+      resolve();
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function addPdfPages(file){
+  const buf = await file.arrayBuffer();
+  const pdf = await pdfjsLib.getDocument({data: buf}).promise;
+  const maxPages = Math.min(pdf.numPages, 12);
+  for (let i = 1; i <= maxPages; i++){
+    const page = await pdf.getPage(i);
+    const viewport = page.getViewport({scale: 2.2});
+    const canvas = document.createElement("canvas");
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    await page.render({canvasContext: canvas.getContext("2d"), viewport}).promise;
+    const dataUrl = canvas.toDataURL("image/png");
+    pages.push({dataUrl, mediaType: "image/png", base64: dataUrl.split(",")[1]});
+  }
+}
+
+function renderThumbs(){
+  const el = document.getElementById("thumbs");
+  el.innerHTML = "";
+  pages.forEach((p, idx) => {
+    const div = document.createElement("div");
+    div.className = "thumb" + (idx === activePage ? " active" : "");
+    const img = document.createElement("img");
+    img.src = p.dataUrl;
+    div.appendChild(img);
+    div.onclick = () => { activePage = idx; renderPreview(); renderThumbs(); };
+    el.appendChild(div);
+  });
+}
+
+function renderPreview(){
+  const el = document.getElementById("preview");
+  el.innerHTML = "";
+  if (!pages.length) return;
+  const img = document.createElement("img");
+  img.src = pages[activePage].dataUrl;
+  el.appendChild(img);
+}
+
+// ---------- Сервер распознавания ----------
+document.getElementById("serverBtn").onclick = () => {
+  const current = localStorage.getItem(LS_SERVER) || DEFAULT_SERVER_URL;
+  const url = prompt("Адрес сервера распознавания (Cloudflare Worker):", current);
+  if (url === null) return;
+  localStorage.setItem(LS_SERVER, url.trim());
+  toast("Адрес сервера сохранён");
+};
+
+document.getElementById("recognizeBtn").onclick = async () => {
+  const serverUrl = localStorage.getItem(LS_SERVER) || DEFAULT_SERVER_URL;
+  const out = document.getElementById("aiOutput");
+  if (!pages.length) return;
+
+  const btn = document.getElementById("recognizeBtn");
+  btn.disabled = true;
+  btn.textContent = "Считаю...";
+  out.innerHTML = "";
+
+  try {
+    const geometryMode = document.getElementById("geometryModeCheckbox").checked;
+    const resp = await fetch(serverUrl, {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        images: pages.map(p => ({mediaType: p.mediaType, data: p.base64})),
+        geometryMode
+      })
+    });
+    const data = await resp.json();
+    if (!resp.ok || data.error){
+      let msg = `Не удалось распознать: ${escapeHtml(data.error || "неизвестная ошибка")}`;
+      if (data.raw !== undefined) {
+        const rawDisplay = data.raw ? escapeHtml(data.raw) : "(пустой ответ — модель ничего не вернула в текстовом блоке)";
+        msg += `<div style="margin-top:8px;padding-top:8px;border-top:1px solid #eecdc9;"><strong>Что вернул ИИ:</strong><br>${rawDisplay}</div>`;
+      }
+      out.innerHTML = `<div class="ai-error">${msg}</div>`;
+      return;
+    }
+    renderAiResult(data);
+    computeAiDraft(data);
+    aiEstimates = (geometryMode && data.geometry_estimates) ? data.geometry_estimates : null;
+    if (aiEstimates) renderGeometryEstimates(aiEstimates);
+  } catch (e){
+    out.innerHTML = `<div class="ai-error">Не удалось связаться с сервером: ${escapeHtml(e.message)}</div>`;
+  } finally {
+    btn.disabled = false;
+    btn.textContent = "Считать данные с чертежа (ИИ)";
+  }
+};
+
+// Считает безопасные (табличные, не по значкам) числа и кладёт их в aiDraft —
+// они автоматически подставятся в поле "Кол-во", когда кликаешь позицию в справочнике.
+function computeAiDraft(data){
+  const draft = { area_sqm: data.area_sqm ?? null, shadowProfileLen: null, standardProfileLen: null, electroCorniceLen: null };
+
+  if (Array.isArray(data.ceiling_profiles) && data.ceiling_profiles.length){
+    let shadow = 0, standard = 0, any = false;
+    data.ceiling_profiles.forEach(p => {
+      if (typeof p.length_m !== "number") return;
+      any = true;
+      if ((p.type || "").toLowerCase().includes("тенев")) shadow += p.length_m;
+      else standard += p.length_m;
+    });
+    if (any){ draft.shadowProfileLen = shadow || null; draft.standardProfileLen = standard || null; }
+  }
+
+  if (Array.isArray(data.curtain_cornices) && data.curtain_cornices.length){
+    let total = 0, any = false;
+    data.curtain_cornices.forEach(c => {
+      if (typeof c.length_m === "number" && typeof c.qty === "number"){ total += c.length_m * c.qty; any = true; }
+    });
+    if (any) draft.electroCorniceLen = Math.round(total * 100) / 100;
+  }
+
+  const breakdown = computeCeilingBreakdown(data);
+  if (breakdown.totals.stretch !== null) {
+    // Площадь по зонам плана — самый точный источник, если он есть
+    draft.area_sqm = breakdown.totals.stretch;
+  } else if (Array.isArray(data.rooms) && data.rooms.length) {
+    // Резерв: если в самой таблице помещений явно написано, что это площадь потолка/полотна
+    // (а не площадь пола) — берём сумму оттуда
+    const isCeilingKind = k => /потолок|потолк|полотн|натяжн/i.test(k || "");
+    if (data.rooms.some(r => isCeilingKind(r.area_kind))) {
+      const total = data.rooms.reduce((s, r) => s + (typeof r.area_sqm === "number" ? r.area_sqm : 0), 0);
+      if (total) draft.area_sqm = Math.round(total * 100) / 100;
+    }
+  }
+
+  aiDraft = draft;
+  toast("Готово — при клике по справочнику подставятся числа с чертежа (отмечены зелёным)");
+}
+
+// Группирует подписанные на плане зоны потолка по номеру помещения и типу материала.
+function computeCeilingBreakdown(data){
+  const zones = Array.isArray(data.ceiling_zones) ? data.ceiling_zones : [];
+  const rooms = Array.isArray(data.rooms) ? data.rooms : [];
+
+  const byRoom = {}; // room_number -> {stretch, gkl, other}
+  let totalStretch = 0, totalGkl = 0, totalOther = 0, any = false;
+
+  zones.forEach(z => {
+    if (typeof z.area_sqm !== "number") return;
+    any = true;
+    const mat = (z.material || "").toLowerCase();
+    const key = z.room_number ?? "—";
+    if (!byRoom[key]) byRoom[key] = { stretch: 0, gkl: 0, other: 0 };
+
+    if (mat.includes("нат")) { byRoom[key].stretch += z.area_sqm; totalStretch += z.area_sqm; }
+    else if (mat.includes("гкл")) { byRoom[key].gkl += z.area_sqm; totalGkl += z.area_sqm; }
+    else { byRoom[key].other += z.area_sqm; totalOther += z.area_sqm; }
+  });
+
+  const rows = Object.keys(byRoom).map(key => {
+    const room = rooms.find(r => String(r.room_number) === String(key));
+    return {
+      room_number: key,
+      name: room ? room.name : (key === "—" ? "без номера" : `Помещение №${key}`),
+      stretch: byRoom[key].stretch || null,
+      gkl: byRoom[key].gkl || null,
+      other: byRoom[key].other || null,
+    };
+  });
+
+  return {
+    byRoomRows: rows,
+    totals: {
+      stretch: any ? Math.round(totalStretch * 100) / 100 : null,
+      gkl: any ? Math.round(totalGkl * 100) / 100 : null,
+      other: any ? Math.round(totalOther * 100) / 100 : null,
+    }
+  };
+}
+
+function renderGeometryEstimates(est){
+  const out = document.getElementById("aiOutput");
+  let html = `<div class="estimate-box"><h3>🧪 Непроверенная оценка по геометрии и значкам</h3>`;
+  html += `<div>Это НЕ данные с таблиц чертежа — ИИ сам замерил и посчитал по картинке, риск ошибки реальный. Обязательно сверь глазами перед отправкой клиенту.</div>`;
+
+  const rows = [
+    ["Периметр теневого профиля", est.perimeter_estimate_m, "м"],
+    ["Кол-во углов/резов профиля", est.corner_count_estimate, "шт"],
+    ["Длина световых линий", est.linear_light_length_estimate_m, "м"],
+    ["Углы световых линий", est.linear_light_corners_estimate, "шт"],
+    ["Встраиваемые светильники (закладные)", est.builtin_fixture_count_estimate, "шт"],
+    ["Люстры/подвесные (закладные)", est.pendant_fixture_count_estimate, "шт"],
+  ];
+  const anyRow = rows.some(r => r[1] != null);
+  if (anyRow) {
+    html += `<table style="margin-top:8px;">`;
+    rows.forEach(([label, val, unit]) => {
+      if (val == null) return;
+      html += `<tr><td>${escapeHtml(label)}</td><td>${val} ${unit}</td></tr>`;
+    });
+    html += `</table>`;
+    html += `<div style="margin-top:6px;">Эти числа подставятся оранжевым при клике по соответствующим позициям в справочнике, если для них ещё нет безопасного табличного значения.</div>`;
+  } else {
+    html += `<div style="margin-top:8px;">Даже приблизительно посчитать не смог — впиши эти цифры вручную.</div>`;
+  }
+  if (est.confidence_note) html += `<div style="margin-top:8px;font-style:italic;">${escapeHtml(est.confidence_note)}</div>`;
+
+  html += `</div>`;
+  out.innerHTML += html;
+}
+
+function renderAiResult(data){
+  const out = document.getElementById("aiOutput");
+  const breakdown = computeCeilingBreakdown(data);
+  let html = `<div class="ai-result"><h3>Черновые данные с чертежа</h3>`;
+
+  if (breakdown.totals.stretch !== null) {
+    html += `<div class="row"><strong>Площадь натяжного потолка (по зонам на плане):</strong> ${breakdown.totals.stretch} м²</div>`;
+    if (data.area_sqm && Math.abs(data.area_sqm - breakdown.totals.stretch) > 0.5) {
+      html += `<div class="note">⚠ Сводная ведомость даёт другую цифру: ${data.area_sqm} м² (${escapeHtml(data.area_source || "")}). Числа разошлись — сверь оба источника на чертеже перед отправкой клиенту.</div>`;
+    }
+    if (breakdown.totals.gkl) html += `<div class="row src">Площадь ГКЛ-потолков (не натяжных): ${breakdown.totals.gkl} м²</div>`;
+
+    if (breakdown.byRoomRows.length){
+      html += `<div class="row" style="margin-top:8px;"><strong>По помещениям:</strong></div>`;
+      html += `<table><tr><th>Помещение</th><th>Натяжной</th><th>ГКЛ</th></tr>`;
+      breakdown.byRoomRows.forEach(r => {
+        html += `<tr><td>${escapeHtml(r.name)}</td><td>${r.stretch ?? "—"}${r.stretch ? " м²" : ""}</td><td>${r.gkl ?? "—"}${r.gkl ? " м²" : ""}</td></tr>`;
+      });
+      html += `</table>`;
+    }
+  } else {
+    html += `<div class="row"><strong>Площадь:</strong> ${data.area_sqm ?? "не найдено"} ${data.area_sqm ? "м²" : ""}`;
+    if (data.area_source) html += ` <span class="src">(${escapeHtml(data.area_source)})</span>`;
+    html += `</div>`;
+  }
+  if (data.area_note) html += `<div class="note">⚠ ${escapeHtml(data.area_note)}</div>`;
+
+  html += `<div class="row"><strong>Периметр:</strong> ${data.perimeter_m ?? "не найдено"} ${data.perimeter_m ? "м" : ""}`;
+  if (data.perimeter_source) html += ` <span class="src">(${escapeHtml(data.perimeter_source)})</span>`;
+  html += `</div>`;
+
+  html += `<div class="row"><strong>Профиль:</strong> ${data.profile_type ? escapeHtml(data.profile_type) : "не найдено"}</div>`;
+
+  if (Array.isArray(data.ceiling_profiles) && data.ceiling_profiles.length){
+    html += `<div class="row" style="margin-top:8px;"><strong>Потолочные карнизы (длина по маркам):</strong></div>`;
+    html += `<table><tr><th>Марка</th><th>Тип</th><th>Длина</th></tr>`;
+    data.ceiling_profiles.forEach(p => { html += `<tr><td>${escapeHtml(p.mark)}</td><td>${escapeHtml(p.type)}</td><td>${p.length_m} м</td></tr>`; });
+    html += `</table>`;
+    html += `<div class="src">Отсюда посчитаны теневой/стандартный профиль — подставятся автоматически при клике по этим позициям в справочнике.</div>`;
+  }
+
+  if (Array.isArray(data.curtain_cornices) && data.curtain_cornices.length){
+    html += `<div class="row" style="margin-top:8px;"><strong>Карнизы для штор (электрокарниз):</strong></div>`;
+    html += `<table><tr><th>Марка</th><th>Тип</th><th>Длина</th><th>Кол-во</th></tr>`;
+    data.curtain_cornices.forEach(c => { html += `<tr><td>${escapeHtml(c.mark)}</td><td>${escapeHtml(c.type)}</td><td>${c.length_m} м</td><td>${c.qty}</td></tr>`; });
+    html += `</table>`;
+  }
+
+  if (data.fixtures && data.fixtures.length){
+    html += `<div class="row" style="margin-top:8px;"><strong>Спецификация (светильники):</strong></div>`;
+    html += `<table><tr><th>Наименование</th><th>Кол-во</th></tr>`;
+    data.fixtures.forEach(f => { html += `<tr><td>${escapeHtml(f.name)}</td><td>${f.qty}</td></tr>`; });
+    html += `</table>`;
+    html += `<div class="src">⚠ Количество закладных под точечные светильники/люстры на реальном плане может отличаться от этих таблиц — посчитай точки сам по плану электрики, это не заполняется автоматически.</div>`;
+  } else {
+    html += `<div class="row" style="margin-top:8px;"><span class="src">Отдельной таблицы-спецификации не найдено — количество светильников/карнизов впиши сам, глядя на план.</span></div>`;
+  }
+
+  if (data.rooms && data.rooms.length){
+    const isCeilingKind = k => /потолок|потолк|полотн|натяжн/i.test(k || "");
+    const isCeilingTable = data.rooms.some(r => isCeilingKind(r.area_kind));
+
+    // Площадь пола не нужна — показываем таблицу только если она про потолок,
+    // и только если такой разбивки ещё нет из ceiling_zones (не дублируем)
+    if (isCeilingTable && !breakdown.byRoomRows.length) {
+      const total = data.rooms.reduce((s, r) => s + (typeof r.area_sqm === "number" ? r.area_sqm : 0), 0);
+      html += `<div class="row" style="margin-top:8px;"><strong>Помещения (площадь потолка):</strong></div>`;
+      html += `<table><tr><th>Помещение</th><th>Площадь</th></tr>`;
+      data.rooms.forEach(r => { html += `<tr><td>${escapeHtml(r.name)}</td><td>${r.area_sqm} м²</td></tr>`; });
+      html += `</table>`;
+      html += `<div class="src">Итого: ${Math.round(total*100)/100} м² — подставится в «Полотно» при клике в справочнике.</div>`;
+    }
+  }
+
+  html += `<div class="src" style="margin-top:10px;">Площадь полотна, теневой/стандартный профиль и электрокарниз подставятся сами при клике по позиции в справочнике справа (отмечены зелёным) — проверь перед отправкой клиенту. Остальное — вручную.</div>`;
+  html += `</div>`;
+  out.innerHTML = html;
+}
+
+function escapeHtml(str){
+  if (str === undefined || str === null) return "";
+  return String(str).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+}
+
+function toast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+// ---------- init ----------
+renderReference();
+renderSmeta();
+</script>
+</body>
+</html>
