@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>СтройУчёт — ERP</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Segoe UI',Tahoma,sans-serif;background:#f5f5f5;color:#333}
+.header{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff;padding:20px;box-shadow:0 2px 10px rgba(0,0,0,.1)}
+.header h1{font-size:24px;margin-bottom:5px}
+.header p{font-size:14px;opacity:.9}
+.container{display:flex;min-height:calc(100vh - 80px)}
+.sidebar{width:250px;background:#fff;padding:20px;box-shadow:2px 0 10px rgba(0,0,0,.05)}
+.menu-section{margin-bottom:25px}
+.menu-section h3{font-size:11px;text-transform:uppercase;color:#999;margin-bottom:10px;padding-left:10px;letter-spacing:1px}
+.menu-item{padding:10px 15px;margin:3px 0;cursor:pointer;border-radius:8px;transition:.3s;font-size:14px}
+.menu-item:hover{background:#f0f0f0}
+.menu-item.active{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff}
+.main-content{flex:1;padding:30px;overflow-x:auto}
+.page{display:none}
+.page.active{display:block}
+.page-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:25px;flex-wrap:wrap;gap:10px}
+.page-title{font-size:26px;font-weight:600}
+.btn{padding:10px 18px;border:none;border-radius:8px;cursor:pointer;font-size:14px;transition:.3s;font-weight:500}
+.btn-primary{background:linear-gradient(135deg,#667eea,#764ba2);color:#fff}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 5px 15px rgba(102,126,234,.4)}
+.btn-secondary{background:#e0e0e0;color:#333}
+.btn-success{background:#2ecc71;color:#fff}
+.btn-danger{background:#ff4757;color:#fff}
+.dashboard-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;margin-bottom:25px}
+.stat-card{background:#fff;padding:22px;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.05)}
+.stat-card h3{font-size:13px;color:#666;margin-bottom:8px}
+.stat-value{font-size:28px;font-weight:700;color:#667eea}
+.stat-subtitle{font-size:12px;color:#999;margin-top:5px}
+.table-container{background:#fff;border-radius:12px;box-shadow:0 2px 10px rgba(0,0,0,.05);overflow:hidden;margin-bottom:20px}
+.table-header{padding:18px;border-bottom:1px solid #e0e0e0;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
+.filters{display:flex;gap:10px;flex-wrap:wrap}
+.filter-select{padding:8px 12px;border:1px solid #e0e0e0;border-radius:8px;font-size:13px;cursor:pointer;background:#fff}
+table{width:100%;border-collapse:collapse}
+thead{background:#f8f9fa}
+th{padding:12px 15px;text-align:left;font-weight:600;font-size:12px;color:#666;text-transform:uppercase}
+td{padding:12px 15px;border-top:1px solid #f0f0f0;font-size:13px}
+tbody tr:hover{background:#f8f9fa}
+.empty-state{text-align:center;padding:50px 20px;color:#999}
+.empty-state-icon{font-size:42px;margin-bottom:12px}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:1000;align-items:center;justify-content:center}
+.modal.active{display:flex}
+.modal-content{background:#fff;border-radius:12px;width:90%;max-width:650px;max-height:90vh;overflow-y:auto;box-shadow:0 10px 50px rgba(0,0,0,.3)}
+.modal-header{padding:22px;border-bottom:1px solid #e0e0e0;display:flex;justify-content:space-between;align-items:center}
+.modal-header h2{font-size:20px}
+.close-btn{background:none;border:none;font-size:26px;cursor:pointer;color:#999}
+.modal-body{padding:22px}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;margin-bottom:6px;font-weight:500;font-size:13px}
+.form-group input,.form-group select,.form-group textarea{width:100%;padding:9px 12px;border:1px solid #e0e0e0;border-radius:8px;font-size:13px;font-family:inherit}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{outline:none;border-color:#667eea}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modal-footer{padding:18px 22px;border-top:1px solid #e0e0e0;display:flex;justify-content:flex-end;gap:10px}
+.status-badge{padding:4px 10px;border-radius:15px;font-size:11px;font-weight:500;display:inline-block}
+.status-draft{background:#fff3cd;color:#856404}
+.status-approved{background:#d1ecf1;color:#0c5460}
+.status-paid{background:#d4edda;color:#155724}
+.status-work{background:#cce5ff;color:#004085}
+.status-pause{background:#fff3cd;color:#856404}
+.status-done{background:#d4edda;color:#155724}
+.action-btn{padding:5px 10px;margin:0 2px;border:none;border-radius:5px;cursor:pointer;font-size:11px}
+.action-edit{background:#667eea;color:#fff}
+.action-delete{background:#ff4757;color:#fff}
+.toast{position:fixed;top:20px;right:20px;background:#2ecc71;color:#fff;padding:14px 22px;border-radius:8px;box-shadow:0 5px 20px rgba(0,0,0,.2);z-index:2000;animation:slideIn .3s}
+.toast.error{background:#ff4757}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+@media(max-width:768px){.container{flex-direction:column}.sidebar{width:100%}.form-row{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+
+<div class="header">
+<h1>🏗️ СтройУчёт</h1>
+<p>Система управления строительством · Версия 2.0</p>
+</div>
+
+<div class="container">
+<aside class="sidebar">
+<div class="menu-section">
+<h3>Главное</h3>
+<div class="menu-item active" data-page="dashboard">📊 Дашборд</div>
+<div class="menu-item" data-page="objects">🏢 Объекты</div>
+</div>
+<div class="menu-section">
+<h3>Учёт</h3>
+<div class="menu-item" data-page="works">📋 Наряды</div>
+<div class="menu-item" data-page="rentals">🚜 Аренда техники</div>
+<div class="menu-item" data-page="materials">📦 Материалы</div>
+<div class="menu-item" data-page="tools">🔧 Инструменты</div>
+<div class="menu-item" data-page="transfers">🔄 Перемещения</div>
+</div>
+<div class="menu-section">
+<h3>Финансы</h3>
+<div class="menu-item" data-page="estimates">💰 Сметы</div>
+<div class="menu-item" data-page="purchases">🛒 Закупки</div>
+</div>
+<div class="menu-section">
+<h3>Данные</h3>
+<div class="menu-item" onclick="exportAllData()">📥 Экспорт данных</div>
+<div class="menu-item" onclick="document.getElementById('import-file').click()">📤 Импорт данных</div>
+<input type="file" id="import-file" accept=".json" style="display:none" onchange="importAllData(event)">
+</div>
+</aside>
+
+<main class="main-content">
+
+<!-- DASHBOARD -->
+<div class="page active" id="dashboard">
+<div class="page-header">
+<h1 class="page-title">📊 Дашборд</h1>
+<div style="display:flex;gap:10px">
+<button class="btn btn-success" onclick="exportAllData()">📥 Экспорт</button>
+<button class="btn btn-primary" onclick="document.getElementById('import-file').click()">📤 Импорт</button>
+</div>
+</div>
+<div class="dashboard-grid">
+<div class="stat-card"><h3>🏢 Объектов</h3><div class="stat-value" id="stat-objects">0</div><div class="stat-subtitle" id="stat-objects-sub">всего: 0</div></div>
+<div class="stat-card"><h3>📋 Нарядов</h3><div class="stat-value" id="stat-works">0</div><div class="stat-subtitle" id="stat-works-sum">0 ₽</div></div>
+<div class="stat-card"><h3>🚜 Аренда</h3><div class="stat-value" id="stat-rentals">0 ₽</div><div class="stat-subtitle">в этом месяце</div></div>
+<div class="stat-card"><h3>💰 Закупки</h3><div class="stat-value" id="stat-purchases">0 ₽</div><div class="stat-subtitle">в этом месяце</div></div>
+<div class="stat-card"><h3>💼 ИП Марат</h3><div class="stat-value" id="stat-maraf">0 ₽</div><div class="stat-subtitle" id="stat-maraf-ops">0 операций</div></div>
+<div class="stat-card"><h3>💼 ИП Айрат</h3><div class="stat-value" id="stat-airat">0 ₽</div><div class="stat-subtitle" id="stat-airat-ops">0 операций</div></div>
+</div>
+<div class="table-container">
+<div class="table-header"><h3>📋 Последние наряды</h3></div>
+<table><thead><tr><th>№</th><th>Дата</th><th>Объект</th><th>Работник</th><th>Вид работ</th><th>Сумма</th><th>Статус</th></tr></thead>
+<tbody id="dashboard-works"><tr><td colspan="7" class="empty-state"><div class="empty-state-icon">📋</div><p>Нарядов нет</p></td></tr></tbody></table>
+</div>
+</div>
+
+<!-- OBJECTS -->
+<div class="page" id="objects">
+<div class="page-header"><h1 class="page-title">🏢 Объекты</h1><button class="btn btn-primary" onclick="openObjectModal()">+ Добавить объект</button></div>
+<div class="table-container">
+<div class="table-header"><div class="filters">
+<select class="filter-select" id="filter-objects-status" onchange="renderObjects()"><option value="">Все статусы</option><option value="В работе">В работе</option><option value="Пауза">Пауза</option><option value="Завершён">Завершён</option></select>
+</div></div>
+<table><thead><tr><th>Код</th><th>Название</th><th>Адрес</th><th>Заказчик</th><th>Прораб</th><th>Начало</th><th>Статус</th><th>Действия</th></tr></thead>
+<tbody id="objects-table"></tbody></table>
+</div>
+</div>
+
+<!-- WORKS -->
+<div class="page" id="works">
+<div class="page-header"><h1 class="page-title">📋 Наряды на работы</h1><button class="btn btn-primary" onclick="openWorkModal()">+ Добавить наряд</button></div>
+<div class="table-container">
+<div class="table-header"><div class="filters">
+<select class="filter-select" id="filter-works-object" onchange="renderWorks()"><option value="">Все объекты</option></select>
+<select class="filter-select" id="filter-works-payer" onchange="renderWorks()"><option value="">Все плательщики</option><option value="ИП Марат">ИП Марат</option><option value="ИП Айрат">ИП Айрат</option></select>
+<select class="filter-select" id="filter-works-status" onchange="renderWorks()"><option value="">Все статусы</option><option value="Черновик">Черновик</option><option value="Утверждён">Утверждён</option><option value="Выплачено">Выплачено</option></select>
+</div></div>
+<table><thead><tr><th>№</th><th>Дата</th><th>Объект</th><th>Работник</th><th>Вид работ</th><th>Кол-во</th><th>Ставка</th><th>Сумма</th><th>Статус</th><th>Оплатил</th><th>Действия</th></tr></thead>
+<tbody id="works-table"></tbody></table>
+</div>
+</div>
+
+<!-- RENTALS -->
+<div class="page" id="rentals">
+<div class="page-header"><h1 class="page-title">🚜 Аренда техники</h1><button class="btn btn-primary" onclick="openRentalModal()">+ Добавить запись</button></div>
+<div class="table-container">
+<div class="table-header"><div class="filters">
+<select class="filter-select" id="filter-rentals-object" onchange="renderRentals()"><option value="">Все объекты</option></select>
+</div></div>
+<table><thead><tr><th>Дата</th><th>Объект</th><th>Техника</th><th>Поставщик</th><th>Кол-во</th><th>Ед.</th><th>Ставка</th><th>Сумма</th><th>Статус</th><th>Оплатил</th><th>Действия</th></tr></thead>
+<tbody id="rentals-table"></tbody></table>
+</div>
+</div>
+
+<!-- MATERIALS -->
+<div class="page" id="materials">
+<div class="page-header"><h1 class="page-title">📦 Материалы</h1><button class="btn btn-primary" onclick="openMaterialModal()">+ Добавить материал</button></div>
+<div class="table-container">
+<div class="table-header"><div class="filters">
+<select class="filter-select" id="filter-materials-object" onchange="renderMaterials()"><option value="">Все объекты</option></select>
+</div></div>
+<table><thead><tr><th>Дата</th><th>Объект</th><th>Материал</th><th>Ед.</th><th>Кол-во</th><th>Цена</th><th>Сумма</th><th>Примечание</th><th>Действия</th></tr></thead>
+<tbody id="materials-table"></tbody></table>
+</div>
+</div>
+
+<!-- TOOLS -->
+<div class="page" id="tools">
+<div class="page-header"><h1 class="page-title">🔧 Инструменты</h1><button class="btn btn-primary" onclick="openToolModal()">+ Добавить инструмент</button></div>
+<div class="table-container">
+<div class="table-header"><div class="filters">
+<select class="filter-select" id="filter-tools-object" onchange="renderTools()"><option value="">Все объекты</option></select>
+</div></div>
+<table><thead><tr><th>Дата</th><th>Объект</th><th>Инструмент</th><th>Ед.</th><th>Кол-во</th><th>Цена</th><th>Сумма</th><th>Оплатил</th><th>Действия</th></tr></thead>
+<tbody id="tools-table"></tbody></table>
+</div>
+</div>
+
+<!-- TRANSFERS -->
+<div class="page" id="transfers">
+<div class="page-header"><h1 class="page-title">🔄 Перемещения</h1><button class="btn btn-primary" onclick="openTransferModal()">+ Добавить перемещение</button></div>
+<div class="table-container">
+<div class="table-header"><div class="filters">
+<select class="filter-select" id="filter-transfers-object" onchange="renderTransfers()"><option value="">Все объекты</option></select>
+</div></div>
+<table><thead><tr><th>Дата</th><th>Материал</th><th>Ед.</th><th>Кол-во</th><th>Откуда</th><th>Куда</th><th>Причина</th><th>Действия</th></tr></thead>
+<tbody id="transfers-table"></tbody></table>
+</div>
+</div>
+
+<!-- ESTIMATES -->
+<div class="page" id="estimates">
+<div class="page-header"><h1 class="page-title">💰 Сметы</h1><button class="btn btn-primary" onclick="openEstimateModal()">+ Новая смета</button></div>
+<div class="table-container">
+<div class="table-header"><div class="filters">
+<select class="filter-select" id="filter-estimates-object" onchange="renderEstimates()"><option value="">Все объекты</option></select>
+<select class="filter-select" id="filter-estimates-status" onchange="renderEstimates()"><option value="">Все статусы</option><option value="Черновик">Черновик</option><option value="Утверждена">Утверждена</option><option value="Закрыта">Закрыта</option></select>
+</div></div>
+<table><thead><tr><th>№</th><th>Объект</th><th>Название</th><th>Дата</th><th>Статей</th><th>Сумма</th><th>Статус</th><th>Действия</th></tr></thead>
+<tbody id="estimates-table"></tbody></table>
+</div>
+</div>
+
+<!-- PURCHASES -->
+<div class="page" id="purchases">
+<div class="page-header"><h1 class="page-title">🛒 Закупки</h1><button class="btn btn-primary" onclick="openPurchaseModal()">+ Добавить закупку</button></div>
+<div class="table-container">
+<div class="table-header"><div class="filters">
+<select class="filter-select" id="filter-purchases-object" onchange="renderPurchases()"><option value="">Все объекты</option></select>
+<select class="filter-select" id="filter-purchases-payer" onchange="renderPurchases()"><option value="">Все плательщики</option><option value="ИП Марат">ИП Марат</option><option value="ИП Айрат">ИП Айрат</option></select>
+</div></div>
+<table><thead><tr><th>Дата</th><th>Объект</th><th>Материал</th><th>Поставщик</th><th>Ед.</th><th>Кол-во</th><th>Цена</th><th>Сумма</th><th>Статус</th><th>Оплатил</th><th>Действия</th></tr></thead>
+<tbody id="purchases-table"></tbody></table>
+</div>
+</div>
+
+</main>
+</div>
+
+<!-- ============ МОДАЛЬНЫЕ ОКНА ============ -->
+
+<!-- Object Modal -->
+<div class="modal" id="object-modal">
+<div class="modal-content">
+<div class="modal-header"><h2 id="object-modal-title">Новый объект</h2><button class="close-btn" onclick="closeModal('object-modal')">×</button></div>
+<div class="modal-body"><form id="object-form">
+<input type="hidden" name="id">
+<div class="form-group"><label>Название *</label><input type="text" name="name" required></div>
+<div class="form-row">
+<div class="form-group"><label>Код</label><input type="text" name="code"></div>
+<div class="form-group"><label>Адрес</label><input type="text" name="address"></div>
+</div>
+<div class="form-row">
+<div class="form-group"><label>Дата начала</label><input type="date" name="dateStart"></div>
+<div class="form-group"><label>Дата окончания</label><input type="date" name="dateEnd"></div>
+</div>
+<div class="form-row">
+<div class="form-group"><label>Статус</label><select name="status"><option>В работе</option><option>Пауза</option><option>Завершён</option></select></div>
+<div class="form-group"><label>Заказчик</label><input type="text" name="customer"></div>
+</div>
+<div class="form-group"><label>Прораб</label><input type="text" name="foreman"></div>
+<div class="form-group"><label>Примечание</label><textarea name="note" rows="2"></textarea></div>
+</form></div>
+<div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('object-modal')">Отмена</button><button class="btn btn-primary" onclick="saveObject()">💾 Сохранить</button></div>
+</div>
+</div>
+
+<!-- Work Modal -->
+<div class="modal" id="work-modal">
+<div class="modal-content">
+<div class="modal-header"><h2 id="work-modal-title">Новый наряд</h2><button class="close-btn" onclick="closeModal('work-modal')">×</button></div>
+<div class="modal-body"><form id="work-form">
+<input type="hidden" name="id">
+<div class="form-group"><label>Объект *</label><select name="object" required class="obj-select"></select></div>
+<div class="form-row">
+<div class="form-group"><label>Дата *</label><input type="date" name="date" required></div>
+<div class="form-group"><label>Работник(и) *</label><input type="text" name="worker" required></div>
+</div>
+<div class="form-group"><label>Вид работ *</label><input type="text" name="workType" required></div>
+<div class="form-row">
+<div class="form-group"><label>Ед.изм.</label><select name="unit"><option>м²</option><option>м³</option><option>пог.м</option><option>шт</option><option>т</option><option>смена</option><option>час</option></select></div>
+<div class="form-group"><label>Количество</label><input type="number" name="quantity" step="0.01" min="0" oninput="calcWorkTotal()"></div>
+</div>
+<div class="form-row">
+<div class="form-group"><label>Ставка ₽</label><input type="number" name="rate" step="0.01" min="0" oninput="calcWorkTotal()"></div>
+<div class="form-group"><label>Сумма</label><input type="number" name="total" step="0.01" readonly></div>
+</div>
+<div class="form-row">
+<div class="form-group"><label>Статус</label><select name="status"><option>Черновик</option><option>Утверждён</option><option>Выплачено</option></select></div>
+<div class="form-group"><label>Кто оплатил</label><select name="payer"><option value="">не указано</option><option>ИП Марат</option><option>ИП Айрат</option></select></div>
+</div>
+<div class="form-group"><label>Примечание</label><textarea name="note" rows="2"></textarea></div>
+</form></div>
+<div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('work-modal')">Отмена</button><button class="btn btn-primary" onclick="saveWork()">💾 Сохранить</button></div>
+</div>
+</div>
+
+<!-- Rental Modal -->
+<div class="modal" id="rental-modal">
+<div class="modal-content">
+<div class="modal-header"><h2 id="rental-modal-title">Аренда техники</h2><button class="close-btn" onclick="closeModal('rental-modal')">×</button></div>
+<div class="modal-body"><form id="rental-form">
+<input type="hidden" name="id">
+<div class="form-group"><label>Объект *</label><select name="object" required class="obj-select"></select></div>
+<div class="form-row">
+<div class="form-group"><label>Дата *</label><input type="date" name="date" required></div>
+<div class="form-group"><label>Техника *</label><input type="text" name="equipment" required></div>
+</div>
+<div class="form-group"><label>Поставщик</label><input type="text" name="supplier"></div>
+<div class="form-row">
+<div class="form-group"><label>Ед.</label><select name="unit"><option>час</option><option>смена</option><option>сутки</option><option>рейс</option></select></div>
+<div class="form-group"><label>Количество</label><input type="number" name="quantity" step="0.01" min="0" oninput="calcRentalTotal()"></div>
+</div>
+<div class="form-row">
+<div class="form-group"><label>Ставка ₽</label><input type="number" name="rate" step="0.01" min="0" oninput="calcRentalTotal()"></div>
+<div class="form-group"><label>Сумма</label><input type="number" name="total" step="0.01" readonly></div>
+</div>
+<div class="form-row">
+<div class="form-group"><label>Статус</label><select name="status"><option>В аренде</option><option>Завершена</option><option>Запланирована</option></select></div>
+<div class="form-group"><label>Кто оплатил</label><select name="payer"><option value="">не указано</option><option>ИП Марат</option><option>ИП Айрат</option></select></div>
+</div>
+<div class="form-group"><label>Примечание</label><textarea name="note" rows="2"></textarea></div>
+</form></div>
+<div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('rental-modal')">Отмена</button><button class="btn btn-primary" onclick="saveRental()">💾 Сохранить</button></div>
+</div>
+</div>
+
+<!-- Material Modal -->
+<div class="modal" id="material-modal">
+<div class="modal-content">
+<div class="modal-header"><h2 id="material-modal-title">Списание материалов</h2><button class="close-btn" onclick="closeModal('material-modal')">×</button></div>
+<div class="modal-body"><form id="material-form">
+<input type="hidden" name="id">
+<div class="form-group"><label>Объект *</label><select name="object" required class="obj-select"></select></div>
+<div class="form-row">
+<div class="form-group"><label>Дата *</label><input type="date" name="date" required></div>
+<div class="form-group"><label>Материал *</label><input type="text" name="material" required></div>
+</div>
+<div class="form-row">
+<div class="form-group"><label>Ед.</label><select name="unit"><option>кг</option><option>т</option><option>м³</option><option>м²</option><option>пог.м</option><option>шт</option><option>л</option><option>мешок</option></select></div>
+<div class="form-group"><label>Количество</label><input type="number" name="quantity" step="0.01" min="0" oninput="calcMaterialTotal()"></div>
+</div>
+<div class="form-row">
+<div class="form-group"><label>Цена ₽</label><input type="number" name="price" step="0.01" min="0" oninput="calcMaterialTotal()"></div>
+<div class="form-group"><label>Сумма</label><input type="number" name="total" step="0.01" readonly></div>
+</div>
+<div class="form-group"><label>Примечание</label><textarea name="note" rows="2"></textarea></div>
+</form></div>
+<div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('material-modal')">Отмена</button><button class="btn btn-primary" onclick="saveMaterial()">💾 Сохранить</button></div>
+</div>
+</div>
+
+<!-- Tool Modal -->
+<div class="modal" id="tool-modal">
+<div class="modal-content">
+<div class="modal-header"><h2 id="tool-modal-title">Инструмент</h2><button class="close-btn" onclick="closeModal('tool-modal')">×</button></div>
+<div class="modal-body"><form id="tool-form">
+<input type="hidden" name="id">
+<div class="form-group"><label>Объект *</label><select name="object" required class="obj-select"></select></div>
+<div class="form-row">
+<div class="form-group"><label>Дата *</label><input type="date" name="date" required></div>
+<div class="form-group"><label>Инструмент *</label><input type="text" name="tool" required></div>
+</div>
+<div class="form-row">
+<div class="form-group"><label>Ед.</label><select name="unit"><option>шт</option><option>комплект</option></select></div>
+<div class="form-group"><label>Количество</label><input type="number" name="quantity" step="0.01" min="0" oninput="calcToolTotal()"></div>
+</div>
+<div class="form-row">
+<div class="form-group"><label>Цена ₽</label><input type="number" name="price" step="0.01" min="0" oninput="calcToolTotal()"></div>
+<div class="form-group"><label>Сумма</label><input type="number" name="total" step="0.01" readonly></div>
+</div>
+<div class="form-group"><label>Кто оплатил</label><select name="payer"><option value="">не указано</option><option>ИП Марат</option><option>ИП Айрат</option></select></div>
+<div class="form-group"><label>Примечание</label><textarea name="note" rows="2"></textarea></div>
+</form></div>
+<div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('tool-modal')">Отмена</button><button class="btn btn-primary" onclick="saveTool()">💾 Сохранить</button></div>
+</div>
+</div>
+
+<!-- Transfer Modal -->
+<div class="modal" id="transfer-modal">
+<div class="modal-content">
+<div class="modal-header"><h2 id="transfer-modal-title">Перемещение</h2><button class="close-btn" onclick="closeModal('transfer-modal')">×</button></div>
+<div class="modal-body"><form id="transfer-form">
+<input type="hidden" name="id">
+<div class="form-group"><label>Материал *</label><input type="text" name="material" required></div>
+<div class="form-row">
+<div class="form-group"><label>Ед.</label><select name="unit"><option>кг</option><option>т</option><option>м³</option><option>шт</option><option>л</option><option>мешок</option></select></div>
+<div class="form-group"><label>Количество</label><input type="number" name="quantity" step="0.01" min="0"></div>
+</div>
+<div class="form-row">
+<div class="form-group"><label>Откуда *</label><input type="text" name="from" required></div>
+<div class="form-group"><label>Куда *</label><input type="text" name="to" required></div>
+</div>
+<div class="form-group"><label>Дата</label><input type="date" name="date"></div>
+<div class="form-group"><label>Причина</label><textarea name="reason" rows="2"></textarea></div>
+</form></div>
+<div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('transfer-modal')">Отмена</button><button class="btn btn-primary" onclick="saveTransfer()">💾 Сохранить</button></div>
+</div>
+</div>
+
+<!-- Estimate Modal -->
+<div class="modal" id="estimate-modal">
+<div class="modal-content">
+<div class="modal-header"><h2 id="estimate-modal-title">Новая смета</h2><button class="close-btn" onclick="closeModal('estimate-modal')">×</button></div>
+<div class="modal-body"><form id="estimate-form">
+<input type="hidden" name="id">
+<div class="form-group"><label>Объект *</label><select name="object" required class="obj-select"></select></div>
+<div class="form-row">
+<div class="form-group"><label>Название *</label><input type="text" name="name" required></div>
+<div class="form-group"><label>Дата</label><input type="date" name="date"></div>
+</div>
+<div class="form-group"><label>Статус</label><select name="status"><option>Черновик</option><option>Утверждена</option><option>Закрыта</option></select></div>
+<div class="form-group"><label>Статьи сметы</label>
+<div id="estimate-items"></div>
+<button type="button" class="btn btn-secondary" onclick="addEstimateItem()" style="margin-top:8px">+ Статья</button>
+</div>
+<div class="form-group"><label>Примечание</label><textarea name="note" rows="2"></textarea></div>
+</form></div>
+<div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('estimate-modal')">Отмена</button><button class="btn btn-primary" onclick="saveEstimate()">💾 Сохранить</button></div>
+</div>
+</div>
+
+<!-- Purchase Modal -->
+<div class="modal" id="purchase-modal">
+<div class="modal-content">
+<div class="modal-header"><h2 id="purchase-modal-title">Закупка материалов</h2><button class="close-btn" onclick="closeModal('purchase-modal')">×</button></div>
+<div class="modal-body"><form id="purchase-form">
+<input type="hidden" name="id">
+<div class="form-group"><label>Объект *</label><select name="object" required class="obj-select"></select></div>
+<div class="form-row">
+<div class="form-group"><label>Дата *</label><input type="date" name="date" required></div>
+<div class="form-group"><label>Материал *</label><input type="text" name="material" required></div>
+</div>
+<div class="form-group"><label>Поставщик</label><input type="text" name="supplier"></div>
+<div class="form-row">
+<div class="form-group"><label>Ед.</label><select name="unit"><option>кг</option><option>т</option><option>м³</option><option>м²</option><option>пог.м</option><option>шт</option><option>л</option><option>мешок</option></select></div>
+<div class="form-group"><label>Количество</label><input type="number" name="quantity" step="0.01" min="0" oninput="calcPurchaseTotal()"></div>
+</div>
+<div class="form-row">
+<div class="form-group"><label>Цена ₽</label><input type="number" name="price" step="0.01" min="0" oninput="calcPurchaseTotal()"></div>
+<div class="form-group"><label>Сумма</label><input type="number" name="total" step="0.01" readonly></div>
+</div>
+<div class="form-row">
+<div class="form-group"><label>Статус</label><select name="status"><option>Заказано</option><option>Доставлено</option><option>Оплачено</option></select></div>
+<div class="form-group"><label>Кто оплатил</label><select name="payer"><option value="">не указано</option><option>ИП Марат</option><option>ИП Айрат</option></select></div>
+</div>
+<div class="form-group"><label>Примечание</label><textarea name="note" rows="2"></textarea></div>
+</form></div>
+<div class="modal-footer"><button class="btn btn-secondary" onclick="closeModal('purchase-modal')">Отмена</button><button class="btn btn-primary" onclick="savePurchase()">💾 Сохранить</button></div>
+</div>
+</div>
+
+<script>
+// ============ БАЗА ДАННЫХ (localStorage) ============
+const DB = {
+    get(key) { try { return JSON.parse(localStorage.getItem(key)) || []; } catch(e) { return []; } },
+    set(key, data) { localStorage.setItem(key, JSON.stringify(data)); }
+};
+
+// ============ УВЕДОМЛЕНИЯ ============
+function toast(msg, type='success') {
+    const t = document.createElement('div');
+    t.className = 'toast' + (type==='error' ? ' error' : '');
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(() => t.remove(), 3000);
+}
+
+// ============ НАВИГАЦИЯ ============
+document.querySelectorAll('.menu-item[data-page]').forEach(item => {
+    item.addEventListener('click', () => {
+        const page = item.dataset.page;
+        document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById(page).classList.add('active');
+        loadPage(page);
+    });
+});
+
+// ============ МОДАЛКИ ============
+function openModal(id) { document.getElementById(id).classList.add('active'); updateObjSelects(); }
+function closeModal(id) {
+    document.getElementById(id).classList.remove('active');
+    const form = document.querySelector(`#${id} form`);
+    if (form) form.reset();
+    if (id === 'estimate-modal') document.getElementById('estimate-items').innerHTML = '';
+}
+
+// ============ ПОМОЩНИКИ ============
+function genId() { return Date.now().toString(36) + Math.random().toString(36).substr(2, 5); }
+function fmtDate(d) { if (!d) return '—'; const dt = new Date(d); return dt.toLocaleDateString('ru-RU'); }
+function fmtMoney(n) { return (parseFloat(n)||0).toLocaleString('ru-RU') + ' ₽'; }
+function statusBadge(s) {
+    const map = { 'Черновик':'status-draft','Утверждён':'status-approved','Выплачено':'status-paid','В работе':'status-work','Пауза':'status-pause','Завершён':'status-done','Утверждена':'status-approved','Закрыта':'status-draft' };
+    return `<span class="status-badge ${map[s]||'status-draft'}">${s}</span>`;
+}
+function emptyRow(cols, icon, text) {
+    return `<tr><td colspan="${cols}" class="empty-state"><div class="empty-state-icon">${icon}</div><p>${text}</p></td></tr>`;
+}
+
+// ============ ОБНОВЛЕНИЕ SELECT-ОВ ОБЪЕКТОВ ============
+function updateObjSelects() {
+    const objects = DB.get('objects');
+    document.querySelectorAll('.obj-select').forEach(sel => {
+        const cur = sel.value;
+        sel.innerHTML = '<option value="">— выберите —</option>' + objects.map(o => `<option value="${o.name}">${o.name}</option>`).join('');
+        if (cur) sel.value = cur;
+    });
+    // Фильтры
+    ['filter-works-object','filter-rentals-object','filter-materials-object','filter-tools-object','filter-transfers-object','filter-estimates-object','filter-purchases-object'].forEach(id => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        const cur = el.value;
+        el.innerHTML = '<option value="">Все объекты</option>' + objects.map(o => `<option value="${o.name}">${o.name}</option>`).join('');
+        if (cur) el.value = cur;
+    });
+}
+
+// ============ РАСЧЁТЫ ============
+function calcWorkTotal() { const f=document.getElementById('work-form'); f.total.value = (parseFloat(f.quantity.value)||0) * (parseFloat(f.rate.value)||0); }
+function calcRentalTotal() { const f=document.getElementById('rental-form'); f.total.value = (parseFloat(f.quantity.value)||0) * (parseFloat(f.rate.value)||0); }
+function calcMaterialTotal() { const f=document.getElementById('material-form'); f.total.value = (parseFloat(f.quantity.value)||0) * (parseFloat(f.price.value)||0); }
+function calcToolTotal() { const f=document.getElementById('tool-form'); f.total.value = (parseFloat(f.quantity.value)||0) * (parseFloat(f.price.value)||0); }
+function calcPurchaseTotal() { const f=document.getElementById('purchase-form'); f.total.value = (parseFloat(f.quantity.value)||0) * (parseFloat(f.price.value)||0); }
+
+// ============ ФОРМА ДАННЫХ ============
+function formData(formId) {
+    const f = document.getElementById(formId);
+    const data = {};
+    new FormData(f).forEach((v, k) => data[k] = v);
+    return data;
+}
+
+// ============ ОБЪЕКТЫ ============
+function openObjectModal(id) {
+    const form = document.getElementById('object-form');
+    form.reset();
+    if (id) {
+        const obj = DB.get('objects').find(o => o.id === id);
+        if (obj) Object.keys(obj).forEach(k => { if (form[k]) form[k].value = obj[k]; });
+        document.getElementById('object-modal-title').textContent = 'Редактировать объект';
+    } else {
+        document.getElementById('object-modal-title').textContent = 'Новый объект';
+    }
+    openModal('object-modal');
+}
+function saveObject() {
+    const f = document.getElementById('object-form');
+    if (!f.name.value.trim()) { toast('Введите название объекта', 'error'); return; }
+    const data = formData('object-form');
+    let list = DB.get('objects');
+    if (data.id) {
+        list = list.map(o => o.id === data.id ? {...o, ...data} : o);
+    } else {
+        data.id = genId();
+        list.push(data);
+    }
+    DB.set('objects', list);
+    closeModal('object-modal');
+    renderObjects();
+    updateDashboard();
+    updateObjSelects();
+    toast('Объект сохранён ✅');
+}
+function deleteObject(id) {
+    if (!confirm('Удалить объект?')) return;
+    DB.set('objects', DB.get('objects').filter(o => o.id !== id));
+    renderObjects();
+    updateDashboard();
+    updateObjSelects();
+    toast('Удалено');
+}
+function renderObjects() {
+    const filter = document.getElementById('filter-objects-status').value;
+    let list = DB.get('objects');
+    if (filter) list = list.filter(o => o.status === filter);
+    const tbody = document.getElementById('objects-table');
+    if (!list.length) { tbody.innerHTML = emptyRow(8, '🏗️', 'Объектов пока нет'); return; }
+    tbody.innerHTML = list.map(o => `<tr>
+        <td>${o.code||'—'}</td><td>${o.name}</td><td>${o.address||'—'}</td>
+        <td>${o.customer||'—'}</td><td>${o.foreman||'—'}</td><td>${fmtDate(o.dateStart)}</td>
+        <td>${statusBadge(o.status||'В работе')}</td>
+        <td><button class="action-btn action-edit" onclick="openObjectModal('${o.id}')">✏️</button><button class="action-btn action-delete" onclick="deleteObject('${o.id}')">🗑️</button></td>
+    </tr>`).join('');
+}
+
+// ============ НАРЯДЫ ============
+function openWorkModal(id) {
+    const form = document.getElementById('work-form');
+    form.reset();
+    if (id) {
+        const w = DB.get('works').find(x => x.id === id);
+        if (w) Object.keys(w).forEach(k => { if (form[k]) form[k].value = w[k]; });
+        document.getElementById('work-modal-title').textContent = 'Редактировать наряд';
+    } else {
+        document.getElementById('work-modal-title').textContent = 'Новый наряд';
+    }
+    openModal('work-modal');
+}
+function saveWork() {
+    const f = document.getElementById('work-form');
+    if (!f.object.value || !f.date.value || !f.worker.value.trim() || !f.workType.value.trim()) {
+        toast('Заполните обязательные поля', 'error'); return;
+    }
+    const data = formData('work-form');
+    let list = DB.get('works');
+    if (data.id) list = list.map(w => w.id === data.id ? {...w, ...data} : w);
+    else { data.id = genId(); list.push(data); }
+    DB.set('works', list);
+    closeModal('work-modal');
+    renderWorks();
+    updateDashboard();
+    toast('Наряд сохранён ✅');
+}
+function deleteWork(id) {
+    if (!confirm('Удалить наряд?')) return;
+    DB.set('works', DB.get('works').filter(w => w.id !== id));
+    renderWorks(); updateDashboard(); toast('Удалено');
+}
+function renderWorks() {
+    const fObj = document.getElementById('filter-works-object').value;
+    const fPay = document.getElementById('filter-works-payer').value;
+    const fSt = document.getElementById('filter-works-status').value;
+    let list = DB.get('works');
+    if (fObj) list = list.filter(w => w.object === fObj);
+    if (fPay) list = list.filter(w => w.payer === fPay);
+    if (fSt) list = list.filter(w => w.status === fSt);
+    const tbody = document.getElementById('works-table');
+    if (!list.length) { tbody.innerHTML = emptyRow(11, '📋', 'Нарядов нет'); return; }
+    tbody.innerHTML = list.map((w,i) => `<tr>
+        <td>${i+1}</td><td>${fmtDate(w.date)}</td><td>${w.object}</td><td>${w.worker}</td>
+        <td>${w.workType}</td><td>${w.quantity||'—'} ${w.unit||''}</td><td>${fmtMoney(w.rate)}</td>
+        <td><b>${fmtMoney(w.total)}</b></td><td>${statusBadge(w.status||'Черновик')}</td>
+        <td>${w.payer||'—'}</td>
+        <td><button class="action-btn action-edit" onclick="openWorkModal('${w.id}')">✏️</button><button class="action-btn action-delete" onclick="deleteWork('${w.id}')">🗑️</button></td>
+    </tr>`).join('');
+}
+
+// ============ АРЕНДА ============
+function openRentalModal(id) {
+    const f = document.getElementById('rental-form'); f.reset();
+    if (id) { const r = DB.get('rentals').find(x=>x.id===id); if(r) Object.keys(r).forEach(k=>{if(f[k])f[k].value=r[k];}); document.getElementById('rental-modal-title').textContent='Редактировать'; }
+    else document.getElementById('rental-modal-title').textContent='Аренда техники';
+    openModal('rental-modal');
+}
+function saveRental() {
+    const f = document.getElementById('rental-form');
+    if (!f.object.value || !f.date.value || !f.equipment.value.trim()) { toast('Заполните обязательные поля','error'); return; }
+    const data = formData('rental-form');
+    let list = DB.get('rentals');
+    if (data.id) list = list.map(r=>r.id===data.id?{...r,...data}:r);
+    else { data.id = genId(); list.push(data); }
+    DB.set('rentals', list);
+    closeModal('rental-modal'); renderRentals(); updateDashboard(); toast('Сохранено ✅');
+}
+function deleteRental(id) { if(!confirm('Удалить?'))return; DB.set('rentals',DB.get('rentals').filter(r=>r.id!==id)); renderRentals(); updateDashboard(); toast('Удалено'); }
+function renderRentals() {
+    const fObj = document.getElementById('filter-rentals-object').value;
+    let list = DB.get('rentals');
+    if (fObj) list = list.filter(r => r.object === fObj);
+    const tbody = document.getElementById('rentals-table');
+    if (!list.length) { tbody.innerHTML = emptyRow(11, '🚜', 'Записей аренды нет'); return; }
+    tbody.innerHTML = list.map(r => `<tr>
+        <td>${fmtDate(r.date)}</td><td>${r.object}</td><td>${r.equipment}</td><td>${r.supplier||'—'}</td>
+        <td>${r.quantity||'—'}</td><td>${r.unit||''}</td><td>${fmtMoney(r.rate)}</td><td><b>${fmtMoney(r.total)}</b></td>
+        <td>${statusBadge(r.status||'В аренде')}</td><td>${r.payer||'—'}</td>
+        <td><button class="action-btn action-edit" onclick="openRentalModal('${r.id}')">✏️</button><button class="action-btn action-delete" onclick="deleteRental('${r.id}')">🗑️</button></td>
+    </tr>`).join('');
+}
+
+// ============ МАТЕРИАЛЫ ============
+function openMaterialModal(id) {
+    const f = document.getElementById('material-form'); f.reset();
+    if (id) { const m = DB.get('materials').find(x=>x.id===id); if(m) Object.keys(m).forEach(k=>{if(f[k])f[k].value=m[k];}); document.getElementById('material-modal-title').textContent='Редактировать'; }
+    else document.getElementById('material-modal-title').textContent='Списание материалов';
+    openModal('material-modal');
+}
+function saveMaterial() {
+    const f = document.getElementById('material-form');
+    if (!f.object.value || !f.date.value || !f.material.value.trim()) { toast('Заполните обязательные поля','error'); return; }
+    const data = formData('material-form');
+    let list = DB.get('materials');
+    if (data.id) list = list.map(m=>m.id===data.id?{...m,...data}:m);
+    else { data.id = genId(); list.push(data); }
+    DB.set('materials', list);
+    closeModal('material-modal'); renderMaterials(); updateDashboard(); toast('Сохранено ✅');
+}
+function deleteMaterial(id) { if(!confirm('Удалить?'))return; DB.set('materials',DB.get('materials').filter(m=>m.id!==id)); renderMaterials(); updateDashboard(); toast('Удалено'); }
+function renderMaterials() {
+    const fObj = document.getElementById('filter-materials-object').value;
+    let list = DB.get('materials');
+    if (fObj) list = list.filter(m => m.object === fObj);
+    const tbody = document.getElementById('materials-table');
+    if (!list.length) { tbody.innerHTML = emptyRow(9, '📦', 'Списаний нет'); return; }
+    tbody.innerHTML = list.map(m => `<tr>
+        <td>${fmtDate(m.date)}</td><td>${m.object}</td><td>${m.material}</td><td>${m.unit||''}</td>
+        <td>${m.quantity||'—'}</td><td>${fmtMoney(m.price)}</td><td><b>${fmtMoney(m.total)}</b></td>
+        <td>${m.note||'—'}</td>
+        <td><button class="action-btn action-edit" onclick="openMaterialModal('${m.id}')">✏️</button><button class="action-btn action-delete" onclick="deleteMaterial('${m.id}')">🗑️</button></td>
+    </tr>`).join('');
+}
+
+// ============ ИНСТРУМЕНТЫ ============
+function openToolModal(id) {
+    const f = document.getElementById('tool-form'); f.reset();
+    if (id) { const t = DB.get('tools').find(x=>x.id===id); if(t) Object.keys(t).forEach(k=>{if(f[k])f[k].value=t[k];}); document.getElementById('tool-modal-title').textContent='Редактировать'; }
+    else document.getElementById('tool-modal-title').textContent='Инструмент';
+    openModal('tool-modal');
+}
+function saveTool() {
+    const f = document.getElementById('tool-form');
+    if (!f.object.value || !f.date.value || !f.tool.value.trim()) { toast('Заполните обязательные поля','error'); return; }
+    const data = formData('tool-form');
+    let list = DB.get('tools');
+    if (data.id) list = list.map(t=>t.id===data.id?{...t,...data}:t);
+    else { data.id = genId(); list.push(data); }
+    DB.set('tools', list);
+    closeModal('tool-modal'); renderTools(); updateDashboard(); toast('Сохранено ✅');
+}
+function deleteTool(id) { if(!confirm('Удалить?'))return; DB.set('tools',DB.get('tools').filter(t=>t.id!==id)); renderTools(); updateDashboard(); toast('Удалено'); }
+function renderTools() {
+    const fObj = document.getElementById('filter-tools-object').value;
+    let list = DB.get('tools');
+    if (fObj) list = list.filter(t => t.object === fObj);
+    const tbody = document.getElementById('tools-table');
+    if (!list.length) { tbody.innerHTML = emptyRow(9, '🔧', 'Инструментов нет'); return; }
+    tbody.innerHTML = list.map(t => `<tr>
+        <td>${fmtDate(t.date)}</td><td>${t.object}</td><td>${t.tool}</td><td>${t.unit||''}</td>
+        <td>${t.quantity||'—'}</td><td>${fmtMoney(t.price)}</td><td><b>${fmtMoney(t.total)}</b></td>
+        <td>${t.payer||'—'}</td>
+        <td><button class="action-btn action-edit" onclick="openToolModal('${t.id}')">✏️</button><button class="action-btn action-delete" onclick="deleteTool('${t.id}')">🗑️</button></td>
+    </tr>`).join('');
+}
+
+// ============ ПЕРЕМЕЩЕНИЯ ============
+function openTransferModal(id) {
+    const f = document.getElementById('transfer-form'); f.reset();
+    if (id) { const t = DB.get('transfers').find(x=>x.id===id); if(t) Object.keys(t).forEach(k=>{if(f[k])f[k].value=t[k];}); document.getElementById('transfer-modal-title').textContent='Редактировать'; }
+    else document.getElementById('transfer-modal-title').textContent='Перемещение';
+    openModal('transfer-modal');
+}
+function saveTransfer() {
+    const f = document.getElementById('transfer-form');
+    if (!f.material.value.trim() || !f.from.value.trim() || !f.to.value.trim()) { toast('Заполните обязательные поля','error'); return; }
+    if (f.from.value.trim().toLowerCase() === f.to.value.trim().toLowerCase()) { toast('Нельзя переместить в то же место','error'); return; }
+    const data = formData('transfer-form');
+    let list = DB.get('transfers');
+    if (data.id) list = list.map(t=>t.id===data.id?{...t,...data}:t);
+    else { data.id = genId(); list.push(data); }
+    DB.set('transfers', list);
+    closeModal('transfer-modal'); renderTransfers(); toast('Сохранено ✅');
+}
+function deleteTransfer(id) { if(!confirm('Удалить?'))return; DB.set('transfers',DB.get('transfers').filter(t=>t.id!==id)); renderTransfers(); toast('Удалено'); }
+function renderTransfers() {
+    const fObj = document.getElementById('filter-transfers-object').value;
+    let list = DB.get('transfers');
+    const tbody = document.getElementById('transfers-table');
+    if (!list.length) { tbody.innerHTML = emptyRow(8, '🔄', 'Перемещений нет'); return; }
+    tbody.innerHTML = list.map(t => `<tr>
+        <td>${fmtDate(t.date)}</td><td>${t.material}</td><td>${t.unit||''}</td><td>${t.quantity||'—'}</td>
+        <td>${t.from}</td><td>${t.to}</td><td>${t.reason||'—'}</td>
+        <td><button class="action-btn action-edit" onclick="openTransferModal('${t.id}')">✏️</button><button class="action-btn action-delete" onclick="deleteTransfer('${t.id}')">🗑️</button></td>
+    </tr>`).join('');
+}
+
+// ============ СМЕТЫ ============
+function addEstimateItem(data={}) {
+    const div = document.createElement('div');
+    div.style.cssText = 'display:grid;grid-template-columns:2fr 1fr 1fr 1fr auto;gap:8px;margin-bottom:8px;align-items:end';
+    div.innerHTML = `
+        <input type="text" placeholder="Наименование" class="est-name" value="${data.name||''}">
+        <input type="text" placeholder="Ед." class="est-unit" value="${data.unit||'шт'}">
+        <input type="number" placeholder="Кол-во" class="est-qty" step="0.01" min="0" value="${data.qty||''}" oninput="calcEstimateTotal()">
+        <input type="number" placeholder="Цена" class="est-price" step="0.01" min="0" value="${data.price||''}" oninput="calcEstimateTotal()">
+        <button type="button" class="action-btn action-delete" onclick="this.parentElement.remove();calcEstimateTotal()">✕</button>
+    `;
+    document.getElementById('estimate-items').appendChild(div);
+}
+function calcEstimateTotal() {
+    let total = 0;
+    document.querySelectorAll('#estimate-items > div').forEach(row => {
+        const q = parseFloat(row.querySelector('.est-qty').value)||0;
+        const p = parseFloat(row.querySelector('.est-price').value)||0;
+        total += q*p;
+    });
+    // можно показать где-то
+}
+function getEstimateItems() {
+    const items = [];
+    document.querySelectorAll('#estimate-items > div').forEach(row => {
+        const name = row.querySelector('.est-name').value.trim();
+        if (!name) return;
+        items.push({
+            name,
+            unit: row.querySelector('.est-unit').value,
+            qty: parseFloat(row.querySelector('.est-qty').value)||0,
+            price: parseFloat(row.querySelector('.est-price').value)||0,
+            total: (parseFloat(row.querySelector('.est-qty').value)||0) * (parseFloat(row.querySelector('.est-price').value)||0)
+        });
+    });
+    return items;
+}
+function openEstimateModal(id) {
+    const f = document.getElementById('estimate-form'); f.reset();
+    document.getElementById('estimate-items').innerHTML = '';
+    if (id) {
+        const e = DB.get('estimates').find(x=>x.id===id);
+        if (e) {
+            Object.keys(e).forEach(k => { if (k !== 'items' && f[k]) f[k].value = e[k]; });
+            if (e.items) e.items.forEach(it => addEstimateItem(it));
+        }
+        document.getElementById('estimate-modal-title').textContent='Редактировать смету';
+    } else {
+        document.getElementById('estimate-modal-title').textContent='Новая смета';
+        addEstimateItem();
+    }
+    openModal('estimate-modal');
+}
+function saveEstimate() {
+    const f = document.getElementById('estimate-form');
+    if (!f.object.value || !f.name.value.trim()) { toast('Заполните обязательные поля','error'); return; }
+    const data = formData('estimate-form');
+    data.items = getEstimateItems();
+    data.sum = data.items.reduce((s,i)=>s+i.total,0);
+    let list = DB.get('estimates');
+    if (data.id) list = list.map(e=>e.id===data.id?{...e,...data}:e);
+    else { data.id = genId(); list.push(data); }
+    DB.set('estimates', list);
+    closeModal('estimate-modal'); renderEstimates(); toast('Сохранено ✅');
+}
+function deleteEstimate(id) { if(!confirm('Удалить?'))return; DB.set('estimates',DB.get('estimates').filter(e=>e.id!==id)); renderEstimates(); toast('Удалено'); }
+function renderEstimates() {
+    const fObj = document.getElementById('filter-estimates-object').value;
+    const fSt = document.getElementById('filter-estimates-status').value;
+    let list = DB.get('estimates');
+    if (fObj) list = list.filter(e => e.object === fObj);
+    if (fSt) list = list.filter(e => e.status === fSt);
+    const tbody = document.getElementById('estimates-table');
+    if (!list.length) { tbody.innerHTML = emptyRow(8, '💰', 'Смет нет'); return; }
+    tbody.innerHTML = list.map((e,i) => `<tr>
+        <td>${i+1}</td><td>${e.object}</td><td>${e.name}</td><td>${fmtDate(e.date)}</td>
+        <td>${(e.items||[]).length}</td><td><b>${fmtMoney(e.sum)}</b></td>
+        <td>${statusBadge(e.status||'Черновик')}</td>
+        <td><button class="action-btn action-edit" onclick="openEstimateModal('${e.id}')">✏️</button><button class="action-btn action-delete" onclick="deleteEstimate('${e.id}')">🗑️</button></td>
+    </tr>`).join('');
+}
+
+// ============ ЗАКУПКИ ============
+function openPurchaseModal(id) {
+    const f = document.getElementById('purchase-form'); f.reset();
+    if (id) { const p = DB.get('purchases').find(x=>x.id===id); if(p) Object.keys(p).forEach(k=>{if(f[k])f[k].value=p[k];}); document.getElementById('purchase-modal-title').textContent='Редактировать'; }
+    else document.getElementById('purchase-modal-title').textContent='Закупка материалов';
+    openModal('purchase-modal');
+}
+function savePurchase() {
+    const f = document.getElementById('purchase-form');
+    if (!f.object.value || !f.date.value || !f.material.value.trim()) { toast('Заполните обязательные поля','error'); return; }
+    const data = formData('purchase-form');
+    let list = DB.get('purchases');
+    if (data.id) list = list.map(p=>p.id===data.id?{...p,...data}:p);
+    else { data.id = genId(); list.push(data); }
+    DB.set('purchases', list);
+    closeModal('purchase-modal'); renderPurchases(); updateDashboard(); toast('Сохранено ✅');
+}
+function deletePurchase(id) { if(!confirm('Удалить?'))return; DB.set('purchases',DB.get('purchases').filter(p=>p.id!==id)); renderPurchases(); updateDashboard(); toast('Удалено'); }
+function renderPurchases() {
+    const fObj = document.getElementById('filter-purchases-object').value;
+    const fPay = document.getElementById('filter-purchases-payer').value;
+    let list = DB.get('purchases');
+    if (fObj) list = list.filter(p => p.object === fObj);
+    if (fPay) list = list.filter(p => p.payer === fPay);
+    const tbody = document.getElementById('purchases-table');
+    if (!list.length) { tbody.innerHTML = emptyRow(11, '🛒', 'Закупок нет'); return; }
+    tbody.innerHTML = list.map(p => `<tr>
+        <td>${fmtDate(p.date)}</td><td>${p.object}</td><td>${p.material}</td><td>${p.supplier||'—'}</td>
+        <td>${p.unit||''}</td><td>${p.quantity||'—'}</td><td>${fmtMoney(p.price)}</td><td><b>${fmtMoney(p.total)}</b></td>
+        <td>${statusBadge(p.status||'Заказано')}</td><td>${p.payer||'—'}</td>
+        <td><button class="action-btn action-edit" onclick="openPurchaseModal('${p.id}')">✏️</button><button class="action-btn action-delete" onclick="deletePurchase('${p.id}')">🗑️</button></td>
+    </tr>`).join('');
+}
+
+// ============ DASHBOARD ============
+function updateDashboard() {
+    const objects = DB.get('objects');
+    const works = DB.get('works');
+    const rentals = DB.get('rentals');
+    const purchases = DB.get('purchases');
+    const all = [...works, ...rentals, ...purchases, ...DB.get('materials'), ...DB.get('tools')];
+
+    document.getElementById('stat-objects').textContent = objects.filter(o=>o.status==='В работе').length;
+    document.getElementById('stat-objects-sub').textContent = `всего: ${objects.length}`;
+    document.getElementById('stat-works').textContent = works.length;
+    document.getElementById('stat-works-sum').textContent = fmtMoney(works.reduce((s,w)=>s+(parseFloat(w.total)||0),0));
+
+    const now = new Date();
+    const thisMonth = rentals.filter(r => { const d = new Date(r.date); return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear(); });
+    document.getElementById('stat-rentals').textContent = fmtMoney(thisMonth.reduce((s,r)=>s+(parseFloat(r.total)||0),0));
+    const thisMonthP = purchases.filter(p => { const d = new Date(p.date); return d.getMonth()===now.getMonth() && d.getFullYear()===now.getFullYear(); });
+    document.getElementById('stat-purchases').textContent = fmtMoney(thisMonthP.reduce((s,p)=>s+(parseFloat(p.total)||0),0));
+
+    const maraf = all.filter(x => x.payer === 'ИП Марат');
+    const airat = all.filter(x => x.payer === 'ИП Айрат');
+    document.getElementById('stat-maraf').textContent = fmtMoney(maraf.reduce((s,x)=>s+(parseFloat(x.total)||0),0));
+    document.getElementById('stat-maraf-ops').textContent = `${maraf.length} операций`;
+    document.getElementById('stat-airat').textContent = fmtMoney(airat.reduce((s,x)=>s+(parseFloat(x.total)||0),0));
+    document.getElementById('stat-airat-ops').textContent = `${airat.length} операций`;
+
+    // Последние наряды
+    const tbody = document.getElementById('dashboard-works');
+    const last = works.slice(-5).reverse();
+    if (!last.length) { tbody.innerHTML = emptyRow(7, '📋', 'Нарядов нет'); return; }
+    tbody.innerHTML = last.map((w,i) => `<tr>
+        <td>${i+1}</td><td>${fmtDate(w.date)}</td><td>${w.object}</td><td>${w.worker}</td>
+        <td>${w.workType}</td><td><b>${fmtMoney(w.total)}</b></td><td>${statusBadge(w.status||'Черновик')}</td>
+    </tr>`).join('');
+}
+
+// ============ ЗАГРУЗКА СТРАНИЦЫ ============
+function loadPage(page) {
+    updateObjSelects();
+    switch(page) {
+        case 'dashboard': updateDashboard(); break;
+        case 'objects': renderObjects(); break;
+        case 'works': renderWorks(); break;
+        case 'rentals': renderRentals(); break;
+        case 'materials': renderMaterials(); break;
+        case 'tools': renderTools(); break;
+        case 'transfers': renderTransfers(); break;
+        case 'estimates': renderEstimates(); break;
+        case 'purchases': renderPurchases(); break;
+    }
+}
+
+// ============ ЭКСПОРТ / ИМПОРТ ============
+function exportAllData() {
+    const data = {
+        version: '2.0',
+        exportDate: new Date().toISOString(),
+        objects: DB.get('objects'),
+        works: DB.get('works'),
+        rentals: DB.get('rentals'),
+        materials: DB.get('materials'),
+        tools: DB.get('tools'),
+        transfers: DB.get('transfers'),
+        estimates: DB.get('estimates'),
+        purchases: DB.get('purchases')
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `stroyuchet-backup-${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('Данные экспортированы 📥');
+}
+
+function importAllData(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+        try {
+            const data = JSON.parse(e.target.result);
+            if (!confirm(`Импортировать данные?\nОбъектов: ${(data.objects||[]).length}\nНарядов: ${(data.works||[]).length}\nи т.д.\n\nТекущие данные будут ЗАМЕНЕНЫ.`)) return;
+            ['objects','works','rentals','materials','tools','transfers','estimates','purchases'].forEach(k => {
+                if (data[k]) DB.set(k, data[k]);
+            });
+            toast('Данные импортированы ✅');
+            loadPage('dashboard');
+            updateObjSelects();
+        } catch(err) {
+            toast('Ошибка чтения файла: ' + err.message, 'error');
+        }
+    };
+    reader.readAsText(file);
+    event.target.value = '';
+}
+
+// ============ СТАРТ ============
+updateObjSelects();
+updateDashboard();
+renderObjects();
+</script>
+</body>
+</html>
