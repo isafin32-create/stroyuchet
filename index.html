@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Конвертер СтройУчёт</title>
+<style>
+body { font-family: Arial; max-width: 700px; margin: 50px auto; padding: 20px; background: #f5f5f5; }
+.card { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+h1 { color: #667eea; }
+.btn { padding: 15px 30px; background: linear-gradient(135deg, #667eea, #764ba2); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 16px; margin: 10px 5px; }
+.btn:hover { opacity: 0.9; }
+.btn:disabled { opacity: 0.5; cursor: not-allowed; }
+#status { margin-top: 20px; padding: 15px; border-radius: 8px; display: none; }
+.ok { background: #d4edda; color: #155724; }
+.err { background: #f8d7da; color: #721c24; }
+.info { background: #d1ecf1; color: #0c5460; }
+pre { background: #f8f9fa; padding: 10px; border-radius: 5px; overflow-x: auto; font-size: 12px; }
+</style>
+</head>
+<body>
+<div class="card">
+<h1>🔄 Конвертер данных СтройУчёт</h1>
+<p>Этот инструмент перенесёт данные из старой программы в новую.</p>
+
+<h3>Шаг 1: Загрузи файл backup_real.json</h3>
+<input type="file" id="fileInput" accept=".json">
+
+<h3>Шаг 2: Нажми "Конвертировать и импортировать"</h3>
+<button class="btn" id="convertBtn" disabled>🔄 Конвертировать и импортировать</button>
+<button class="btn" id="downloadBtn" disabled style="background: #28a745;">📥 Скачать готовый JSON</button>
+
+<div id="status"></div>
+<div id="preview"></div>
+</div>
+
+<script>
+let convertedData = null;
+
+document.getElementById('fileInput').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+        try {
+            const raw = JSON.parse(ev.target.result);
+            showStatus('Файл загружен. Готов к конвертации.', 'info');
+            document.getElementById('convertBtn').disabled = false;
+        } catch(err) {
+            showStatus('Ошибка чтения файла: ' + err.message, 'err');
+        }
+    };
+    reader.readAsText(file);
+});
+
+document.getElementById('convertBtn').addEventListener('click', function() {
+    const file = document.getElementById('fileInput').files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = function(ev) {
+        try {
+            const raw = JSON.parse(ev.target.result);
+            convertedData = convertData(raw);
+            saveToLocalStorage(convertedData);
+            showStatus('✅ Данные успешно конвертированы и сохранены! Теперь открой index.html (новую версию).', 'ok');
+            document.getElementById('downloadBtn').disabled = false;
+            showPreview(convertedData);
+        } catch(err) {
+            showStatus('❌ Ошибка: ' + err.message, 'err');
+            console.error(err);
+        }
+    };
+    reader.readAsText(file);
+});
+
+document.getElementById('downloadBtn').addEventListener('click', function() {
+    if (!convertedData) return;
+    const blob = new Blob([JSON.stringify(convertedData, null, 2)], {type: 'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'stroyuchet_converted.json';
+    a.click();
+    URL.revokeObjectURL(url);
+});
+
+function showStatus(msg, type) {
+    const s = document.getElementById('status');
+    s.textContent = msg;
+    s.className = type;
+    s.style.display = 'block';
+}
+
+function showPreview(data) {
+    const p = document.getElementById('preview');
+    p.innerHTML = '<h3>📊 Результат:</h3><pre>' + JSON.stringify({
+        objects: data.objects.length + ' шт.',
+        works: data.works.length + ' шт.',
+        rentals: data.rentals.length + ' шт.',
+        materials: data.materials.length + ' шт.',
+        tools: data.tools.length + ' шт.',
+        transfers: data.transfers.length + ' шт.',
+        estimates: data.estimates.length + ' шт.',
+        purchases: data.purchases.length + ' шт.'
+    }, null, 2) + '</pre>';
+}
+
+function convertData(raw) {
+    // Находим данные — они могут быть в "stroyuchet_db " или напрямую
+    let db = raw.stroyuchet_db || raw['stroyuchet_db '] || raw;
+    
+    // Функция для получения данных с учётом пробелов в ключах
+    const get = (keys) => {
+        for (let k of keys) {
+            if (db[k] !== undefined) return db[k];
+        }
+        return [];
+    };
+    
+    const oldObjects = get(['objects', 'objects ']) || [];
+    const oldOrders = get(['orders', 'orders ']) || [];
+    const oldEquipment = get(['equipment', 'equipment ']) || [];
+    const oldWriteOffs = get(['writeOffs', 'writeOffs ']) || [];
+    const oldTransfers = get(['transfers', 'transfers ']) || [];
+    const oldEstimates = get(['estimates', 'estimates ']) || [];
+    const oldPurchases = get(['purchases', 'purchases ']) || [];
+    
+    // Создаём карту объектов id → name
+    const objMap = {};
+    oldObjects.forEach(o => {
+        objMap[o.id] = o.name;
+    });
+    
+    // Конвертация статусов
+    const statusMap = {
+        'active': 'В работе', 'pause': 'Пауза', 'done': 'Завершён',
+        'paid': 'Выплачено', 'draft': 'Черновик', 'approved': 'Утверждён',
+        'Завершена': 'Завершена', 'В аренде': 'В аренде', 'Запланирована': 'Запланирована',
+        'Утверждена': 'Утверждена', 'Закрыта': 'Закрыта',
+        'Оплачено': 'Оплачено', 'Заказано': 'Заказано', 'Доставлено': 'Доставлено'
+    };
+    const st = (s) => statusMap[s] || s || 'Черновик';
+    
+    // 1. Объекты
+    const objects = oldObjects.map(o => ({
+        id: o.id,
+        name: (o.name || '').trim(),
+        code: (o.code || '').trim(),
+        address: (o.addr || '').trim(),
+        dateStart: (o.start || '').trim(),
+        dateEnd: (o.end || '').trim(),
+        status: st(o.status) === 'active' ? 'В работе' : st(o.status) === 'pause' ? 'Пауза' : st(o.status) === 'done' ? 'Завершён' : st(o.status),
+        customer: (o.client || '').trim(),
+        foreman: (o.foreman || '').trim(),
+        note: (o.note || '').trim()
+    }));
+    
+    // 2. Наряды (orders → works)
+    const works = oldOrders.map(o => ({
+        id: o.id,
+        date: (o.date || '').trim(),
+        object: objMap[o.obj] || o.obj || '',
+        worker: (o.workers || 'Не указано').trim(),
+        workType: (o.work || '').trim(),
+        unit: (o.unit || 'шт').trim(),
+        quantity: parseFloat(o.qty) || 0,
+        rate: parseFloat(o.rate) || 0,
+        total: parseFloat(o.total) || 0,
+        status: o.status === 'paid' ? 'Выплачено' : o.status === 'approved' ? 'Утверждён' : 'Черновик',
+        payer: (o.payer || '').trim(),
+        note: (o.note || '').trim(),
+        num: (o.num || '').trim()
+    }));
+    
+    // 3. Аренда (equipment → rentals)
+    const rentals = oldEquipment.map(e => ({
+        id: e.id,
+        date: (e.date || '').trim(),
+        object: objMap[e.obj] || e.obj || '',
+        equipment: (e.name || '').trim(),
+        supplier: (e.supplier || '').trim(),
+        unit: (e.unit || 'час').trim(),
+        quantity: parseFloat(e.qty) || 0,
+        rate: parseFloat(e.rate) || 0,
+        total: parseFloat(e.total) || 0,
+        status: e.status === 'done' ? 'Завершена' : e.status === 'active' ? 'В аренде' : e.status === 'planned' ? 'Запланирована' : 'В аренде',
+        contract: (e.contract || '').trim(),
+        payer: (e.payer || '').trim(),
+        note: (e.note || '').trim()
+    }));
+    
+    // 4. Материалы и Инструменты (writeOffs → materials + tools)
+    const materials = [];
+    const tools = [];
+    oldWriteOffs.forEach(w => {
+        const item = {
+            id: w.id,
+            date: (w.date || '').trim(),
+            object: objMap[w.obj] || w.obj || '',
+            material: (w.mat || '').trim(),
+            unit: (w.unit || 'шт').trim(),
+            quantity: parseFloat(w.qty) || 0,
+            price: parseFloat(w.price) || 0,
+            total: parseFloat(w.total) || 0,
+            payer: (w.payer || '').trim(),
+            note: (w.note || '').trim()
+        };
+        if (w.category === 'tools') {
+            tools.push({...item, tool: item.material});
+        } else {
+            materials.push(item);
+        }
+    });
+    
+    // 5. Перемещения
+    const transfers = (oldTransfers || []).map(t => ({
+        id: t.id,
+        date: (t.date || '').trim(),
+        material: (t.material || '').trim(),
+        unit: (t.unit || 'шт').trim(),
+        quantity: parseFloat(t.quantity) || 0,
+        from: (t.from || '').trim(),
+        to: (t.to || '').trim(),
+        reason: (t.reason || '').trim()
+    }));
+    
+    // 6. Сметы
+    const estimates = oldEstimates.map(e => ({
+        id: e.id,
+        object: objMap[e.obj] || e.obj || '',
+        name: (e.name || '').trim(),
+        date: (e.date || '').trim(),
+        status: e.status === 'approved' ? 'Утверждена' : e.status === 'closed' ? 'Закрыта' : 'Черновик',
+        note: (e.note || '').trim(),
+        items: (e.lines || []).map(l => ({
+            name: (l.name || '').trim(),
+            unit: (l.unit || 'шт').trim(),
+            qty: parseFloat(l.qty) || 0,
+            price: parseFloat(l.price) || 0,
+            total: parseFloat(l.total) || 0
+        })),
+        sum: parseFloat(e.total) || 0
+    }));
+    
+    // 7. Закупки
+    const purchases = oldPurchases.map(p => ({
+        id: p.id,
+        date: (p.date || '').trim(),
+        object: objMap[p.obj] || p.obj || '',
+        material: (p.mat || '').trim(),
+        supplier: (p.supplier || '').trim(),
+        unit: (p.unit || 'шт').trim(),
+        quantity: parseFloat(p.qty) || 0,
+        price: parseFloat(p.price) || 0,
+        total: parseFloat(p.total) || 0,
+        status: p.status === 'paid' ? 'Оплачено' : p.status === 'delivered' ? 'Доставлено' : 'Заказано',
+        invoice: (p.invoice || '').trim(),
+        payer: (p.payer || '').trim(),
+        note: (p.note || '').trim()
+    }));
+    
+    return { objects, works, rentals, materials, tools, transfers, estimates, purchases };
+}
+
+function saveToLocalStorage(data) {
+    Object.keys(data).forEach(key => {
+        localStorage.setItem(key, JSON.stringify(data[key]));
+    });
+    console.log('✅ Сохранено в localStorage:', Object.keys(data));
+}
+</script>
+</body>
+</html>
